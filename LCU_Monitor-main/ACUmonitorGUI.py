@@ -227,13 +227,13 @@ class ACU_GUI(customtkinter.CTk):
         self.LstTime_F.label.configure(text=time.LSTformat)
         self.YearTime_F.after(1000,self.updateTimer)
     def setYearTime(self,S):
-        return CustomFlame(master=S,text=time.Year_Time,text_size=30)
+        return CustomFlame(master=S,text=time.Year_Time,text_size=30,sizeY=5,sizeX=10)
     def setJST(self,S):
-        return CustomFlame(master=S,text=time.JSTformat,text_size=30)
+        return CustomFlame(master=S,text=time.JSTformat,text_size=30,sizeY=5,sizeX=10)
     def setUCT(self,S):
-        return CustomFlame(master=S,text=time.UTCformat,text_size=30)
+        return CustomFlame(master=S,text=time.UTCformat,text_size=30,sizeY=5,sizeX=10)
     def setLST(self,S):
-        return CustomFlame(master=S,text=time.LSTformat,text_size=30)
+        return CustomFlame(master=S,text=time.LSTformat,text_size=30,sizeY=5,sizeX=10)
 
     def __init__(self,async_list=None,asynctest=None):
         super().__init__()
@@ -294,14 +294,13 @@ class ACU_GUI(customtkinter.CTk):
         self.YearTime_F.place(x=0,y=0)
         self.YearTime_F.after(1000,self.updateTimer)
         
-        self.QUIET_BUTTON=CustomButton(master=self,text="QUIET!",text_size=30,X=20,Y=20,sizeX=10,sizeY=5,com=self.quit1,fg="red")
+        self.QUIET_BUTTON=CustomButton(master=self,text="QUIET!",text_size=30,X=80,Y=20,sizeX=10,sizeY=5,com=self.quit1,fg="red")
 
-        Place_F = CustomFlame(master=self,text="あわらキャンパス",text_size=30)
+        Place_F = CustomFlame(master=self,text="あわらキャンパス",text_size=30,sizeX=10,sizeY=5)
         Place_F.place(x=798,y=0)
         
         self.Scaler=CustomScaler(master=self)
         
-
         self.COM_F=CustomCombobox(master=self,value=self.ACU_Monitor.BackEnd.getSerialPorts(),X=92,Y=3,sizeX=15,sizeY=4)
         SELECTED_COM=self.COM_F.combbox.get()
         #self.COM_F.combbox.configure(command=self.ThrowSelectedCom2Backend)
