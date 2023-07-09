@@ -69,17 +69,25 @@ class ACUBackEnd():
         ser=Serialcommunicator()
         
     
-    def ComTest(self):
-        ser = serial.Serial(port="COM1", baudrate=9600, timeout=0.5,bytesize=serial.EIGHTBITS,stopbits = serial.STOPBITS_ONE,parity=serial.PARITY_NONE)
-        commands = [ 0xB6, 0x01, 0x02, 0x00 ]
-        for cmd in commands:
-            data = struct.pack("B", cmd)
-            print("tx: ", data)
-            ser.write(data)
-        ser.flush()
-        rx = ser.readline()
-        print("rx: ", rx)
-        ser.close()
+    def comTest(self,PORT="COM1"):
+        re=False
+        try:
+            ser = serial.Serial(port=PORT, baudrate=9600, timeout=0.5,bytesize=serial.EIGHTBITS,stopbits = serial.STOPBITS_ONE,parity=serial.PARITY_NONE)
+            commands = [ 0xB6, 0x01, 0x02, 0x00 ]
+            for cmd in commands:
+                data = struct.pack("B", cmd)
+                print("tx: ", data)
+                ser.write(data)
+            ser.flush()
+            rx = ser.readline()
+            print("rx: ", rx)
+            ser.close()
+            re=True
+        except(OSError, serial.SerialException):
+            print("SerialError!")
+            pass
+        return re
+
 
     def main(self):#ここでは、上記の(OutPut,input関数)をスレッドリングを利用して、並列処理させています
         outPut_func = threading.Thread(target=outPut)
@@ -96,14 +104,16 @@ class ACUBackEnd():
 class AsyncedClass():
     ACUmonitor=None
     isACUenable=False
+    sleepTime=0.1
+    message="None"
     def __init__(self,ACU=None):
         self.ACUmonitor=ACU
         if self.ACUmonitor is not None:
             self.isACUenable=True
             print(self.__class__.__name__+"AsyncedClasss OK!")
-    def sleep(self,TIME=0.1):
-        if TIME>0:
-            time.sleep(float(TIME))
+    def sleep(self):
+        if self.sleepTime>0:
+            time.sleep(float(self.sleepTime))
 
         
 class Serialcommunicator():
@@ -163,33 +173,38 @@ class Serialcommunicator():
         self.master.ACUmonitor.FrontEnd.COM_F.combbox.configure(fg_color="#3B8ED0")
 
 class comMonitor(AsyncedClass):
-    T=0.1
-    st="None"
-    comunication=None
-    Inited=True
-    before_com=""
     now_com=""
+    before_com=""
     def Async(self):
-        self.now_com=self.ACUmonitor.FrontEnd.COM_F.combbox.get()
-        if self.now_com!=self.before_com:
-            print("CHANGED!"+self.now_com+":"+self.before_com)
-            self.Inited=True
-        if self.ACUmonitor.FrontEnd.COM_F.combbox.get()!="Disconected" and self.Inited:
-            self.Inited=False
-            print(self.ACUmonitor.FrontEnd.COM_F.combbox.get())
-            self.comunication=Serialcommunicator(PORT=self.ACUmonitor.FrontEnd.COM_F.combbox.get(),ms=self)
-        #if self.comunication is not None:
-            #self.comunication.SerialWrite()
-        #self.sleep(self.T)
-        #if self.comunication is not None:
-            #self.comunication.SerialInput()
         self.before_com=self.now_com
-    def __init__(self,acu=None,tim=0.1,St="Its'Me!",ma=None):
-        self.T=tim
-        self.st=St
+        self.now_com=self.ACUmonitor.FrontEnd.COM_F.combbox.get()
+        if self.now_com is not "Disconected" and (self.now_com!=self.before_com or self.ACUmonitor.FrontEnd.SELECTED_COM_ENABLE is False):
+            try:
+                ser = serial.Serial(port=self.now_com, baudrate=9600, timeout=0.5,bytesize=serial.EIGHTBITS,stopbits = serial.STOPBITS_ONE,parity=serial.PARITY_NONE)
+                commands = [ 0xB6, 0x01, 0x02, 0x00 ]
+                for cmd in commands:
+                    data = struct.pack("B", cmd)
+                    print("tx: ", data)
+                    ser.write(data)
+                ser.flush()
+                rx = ser.readline()
+                print("rx: ", rx)
+                ser.close()
+                #self.ACUmonitor.FrontEnd.COM_STATS_F.label.configure(text=(self.now_com+" is Enable!"),bg_color="#3B8ED0")
+                self.ACUmonitor.FrontEnd.SELECTED_COM=self.now_com
+                #self.ACUmonitor.FrontEnd.COM_F.combbox.setDisable()
+            except(OSError, serial.SerialException):
+                print("SerialError!")
+                #self.ACUmonitor.FrontEnd.COM_STATS_F.label.configure(text=(self.now_com+" is Disable!"),bg_color="red")
+                pass
+        self.sleep()
+    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
+        self.sleepTime=sleepT
+        self.message=message
         self.master=ma
         super().__init__(acu)
-
+        
+        
 
 class SerialCommunicator2(AsyncedClass):
     T=0.1

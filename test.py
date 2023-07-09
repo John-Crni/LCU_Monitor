@@ -1,12 +1,11 @@
 
 
-RoopBackCom= [ 0xB6, 0x01, 0x02, 0x00 ]
-RoopBackExpected=b'\xb6\x01\x02\x00'
-RoopBackExpected2=b'\xb6\x01\x02\x00'
+fruits_1 = ["Apple", "Banana", "Orange"]
+fruits_2 = ["Apple", "Banana", "Orange"]
+fruits_3 = ["Banana", "Orange", "Apple"]
 
-if RoopBackExpected==RoopBackExpected2:
-    print(RoopBackExpected2)
-
-
+print(set(fruits_1) == set(fruits_2))
+# True
+print(set(fruits_1) == set(fruits_3))
 
 

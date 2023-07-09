@@ -21,7 +21,7 @@ class Start():
         ACU.BackEnd.ACU_Monitor=ACU
         ACU.FrontEnd.ACU_Monitor=ACU
         print(ACU.FrontEnd.NAME)
-        #ACU.setUpAsync2List(As=ACUbackend.SerialCommunicator2(acu=ACU,tim=0.1,St="GOODBYE!"))
+        ACU.setUpAsync2List(As=ACUbackend.comMonitor(acu=ACU,sleepT=0.5))
         #ACU.setUpAsync2List(As=ACUbackend.comMonitor(acu=ACU,tim=0.5,St="HELLOs"))
         StartGUI.ApperGUI()
         StartGUI.LoopGui()
