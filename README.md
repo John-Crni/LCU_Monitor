@@ -8,6 +8,7 @@ dateutil
 pytz
 dateutil
 astropy
+customtkinter
 
 pip install ~~~
 

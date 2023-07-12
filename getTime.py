@@ -8,24 +8,23 @@ import dateutil.parser
 import astropy.coordinates
 from astropy.units import deg
 from astropy.units import m
-from pytz import timezone
-
 
 Year_Time="1969/7/29"
 JSTformat="???"
 UTCformat="???"
 LSTformat="???"
 
-
+@staticmethod
 def getLocalTime():
     return datetime.datetime.now()
+
 
 def updateAllTime():
     allTime=getLocalTime()
     setYearFormat(allTime)
     jst=getJST(allTime)
     setJSTFormat(jst)
-    setUTCFormat(datetime.datetime.now(datetime.timezone.utc))
+    setUTCFormat(allTime)
     setLSTFormat(jst)
 
 def setYearFormat(dt):
@@ -45,8 +44,11 @@ def setJSTFormat(JST):
     
 def setUTCFormat(_now):
     global UTCformat
-    #UTC = timezone('UTC').localize(_now)
-    UTCformat="UTC:"+getTime(str(_now))
+    UTC = dateutil.parser.parse(
+        '{_now} TZ'.format(**locals()), 
+        tzinfos = {'TZ': dateutil.tz.gettz('UTC')},
+    )
+    UTCformat="UTC:"+getTime(str(UTC))
     
 def setLSTFormat(datetime_):
     global LSTformat
