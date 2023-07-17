@@ -10,7 +10,7 @@ ACUMONITOR=None
 class Start():
     def __init__(self):
         print("SATRT!")
-        global ACUMONITOR
+        global ACUMONITORy
         ACU=ACU_Monitor()
         ACUMONITOR=ACU
         BackEnd=ACUbackend.ACUBackEnd()

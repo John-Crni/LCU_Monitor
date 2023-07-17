@@ -8,9 +8,17 @@ import math
 
 FONT_TYPE = "Segoe UI"
 DEFAULT_WINDOW_WIDTH=1110
-DEFAULT_WINDOW_HEIGHT=600
+DEFAULT_WINDOW_HEIGHT=700
 SELECTED_COM="NONE"
 RADIO_BUTTOM_NUM=0
+ANTTENA_AZMIZTH=360.0000
+AZMIZTH_STR="3 6 0. 0 0 0 0"
+AZMIZTH_MAX=360
+AZMIZTH_MIN=0
+ANTENA_ELEVATION=90.0000
+ELEVATION_STR="9 0. 0 0 0 0"
+ELEVATION_MAX=90
+ELEVATION_MIN=0
 
 class CustomBase(customtkinter.CTkFrame):
     posx=0
@@ -38,11 +46,13 @@ class CustomBase(customtkinter.CTkFrame):
             return n.is_integer()
         return False
     def setGUI(self):
-        self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey)
-        self.directBody.grid(row=0, column=0, padx=10)
-        self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
+        i=0
+        #self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey)
+        #self.directBody.grid(row=0, column=0, padx=10)
+        #self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
     def UPDATEGUI(self):
-        self.directBody.configure(text=self.text)
+        i=0
+        #self.directBody.configure(text=self.text)
     def update_gui(self,text="none_text",text_size=1.1,X=1.1,Y=1.1,sizeX=1.1,sizeY=1.1):
         if text!="none_text":
             self.text=text
@@ -67,14 +77,14 @@ class CustomBase(customtkinter.CTkFrame):
             mas_win_height=DEFAULT_WINDOW_HEIGHT
         scw = mas_win_width*self.X/100
         sch = mas_win_height*self.Y/100
-        if self.parent is not None:
-            scw,sch=self.parent.getWorldpos(self.X,self.Y)
         sw = mas_win_width*self.sizeX/100
         sh = mas_win_height*self.sizeY/100
         if text=="Conect":   
             print("w1="+str(sw))
         self.sizex=sw
         self.sizey=sh
+        if self.parent is not None:
+            scw,sch=self.parent.getWorldpos(x=self.X,y=self.Y)
         if self.inited is False:
             self.setGUI()
         else:
@@ -88,7 +98,7 @@ class CustomBase(customtkinter.CTkFrame):
         #sch-=(req_h/2)
         self.place(x=scw,y=sch)
         self.posx=scw
-        self.posx=sch
+        self.posy=sch
         self.inited=True
     def getWorldpos(self,x=50,y=50):
         X=x/100
@@ -135,6 +145,8 @@ class CustomScaler(customtkinter.CTkFrame):
         Y=y/100
         X=self.sizex*X
         Y=self.sizey*Y
+        print("X1="+str(self.posx+X))
+        print("Y1="+str(self.posy+Y))
         return (self.posx+X),(self.posy+Y)
     def __init__(self, master,text_size=30,sizeX=13,sizeY=5,X=50,Y=50,texcolor="white",bg="red",fg="#3B8ED0",cornerradius=10,com=None,first_value=0,end_value=100,parent=None):
         super().__init__(master)
@@ -171,6 +183,25 @@ class CustomScaler(customtkinter.CTkFrame):
         self.scaler.place(x=sw,y=sh)
         self.posx=sw
         self.posy=sh
+
+class CustomTextBox2(CustomBase):
+    corner=1
+    curb=10
+    num=0
+    def Insert(self,text):
+        self.directBody.insert("0.0",str(self.num)+":"+text)
+        self.num+=1
+    def setGUI(self):
+        super(CustomTextBox2,self).setGUI()
+        self.directBody =customtkinter.CTkTextbox(self, font=(FONT_TYPE, self.text_size),corner_radius=self.corner,width=self.sizex,height=self.sizey)
+        self.Insert(self.text)
+        self.directBody.grid(row=0, column=0, padx=self.curb)
+        self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
+    def __init__(self, master, text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None):
+        super().__init__(master=master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
+        self.corner=corner
+        self.curb=curb
+        self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
 
 class CustomTextBox(customtkinter.CTkFrame):
     textBox=None
@@ -324,34 +355,36 @@ class CustomButton(CustomBase):
     texcolor="black"
     fg="#3B8ED0"
     hg="red"
+    bg="#3B8ED0"
     com=None
     cornerradius=10
-    def selfUpdateValue(self,texcolor="white",fg="#3B8ED0",hg="red",com=None,cornerradius=10):
+    def selfUpdateValue(self,texcolor="white",fg="#3B8ED0",hg="red",com=None,cornerradius=10,bg="#3B8ED0"):
         if texcolor!="none":
             self.texcolor=texcolor
         self.fg=fg
         self.hg=hg
+        self.bg=bg
         if com is not None:
+            print("COM!!!!!!!!!!")
             self.com=com
         if self.is_integer_num(cornerradius):
             self.cornerradius=cornerradius
     def UPDATEGUI(self):
         super(CustomButton,self).UPDATEGUI()
-        if self.com is not None:
-            self.directBody.configure(text=self.text,command=self.com)
-        else:
-            self.directBody.configure(text=self.text)
+        self.directBody.configure(text=self.text)
     def setGUI(self):
         super(CustomButton,self).setGUI()
         if self.com is not None:
-            self.directBody  = customtkinter.CTkButton(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,command=self.com,hover_color=self.hg,bg_color=self.master.cget("fsg_color"))
+            self.directBody  = customtkinter.CTkButton(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,command=self.com,hover_color=self.hg,bg_color=self.bg)
         else:
-            self.directBody  = customtkinter.CTkButton(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,hover_color=self.hg,bg_color=self.master.cget("fg_color"))
-        self.directBody.grid(row=0, column=0, padx=0)
+            self.directBody  = customtkinter.CTkButton(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,hover_color=self.hg,bg_color=self.bg)
+        self.directBody.grid(row=0, column=0, padx=0,pady=0)
         self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
-    def __init__(self, master, text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,texcolor="black",fg="#3B8ED0",hg="red",com=None,cornerradius=10):
+    def __init__(self, master, text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,texcolor="black",fg="#3B8ED0",hg="red",bg="#3B8ED0",com=None,cornerradius=10):
+        if com is None:
+            print("COOOOOOOOOOOM")
         super().__init__(master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
-        self.selfUpdateValue(texcolor=texcolor,fg=fg,hg=hg,com=com,cornerradius=cornerradius)
+        self.selfUpdateValue(texcolor=texcolor,fg=fg,hg=hg,com=com,cornerradius=cornerradius,bg=bg)
         self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
 
 class CustomChekButton(CustomButton):
@@ -482,26 +515,40 @@ class CustomCheckBox(customtkinter.CTkFrame):
 class CustomFlame(CustomBase):
     corner=-1
     curb=10
+    bg="#3B8ED0"
+    fg=""
+    def UPDATEGUI(self):
+        super(CustomFlame,self).UPDATEGUI()
+        self.directBody.configure(text=self.text)
     def setGUI(self):
         super(CustomFlame,self).setGUI()
-        self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey)
+        self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,bg_color=self.bg,fg_color=self.fg)
         self.directBody.grid(row=0, column=0, padx=self.curb)
         self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
-    def __init__(self, master, text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None):
+    def __init__(self, master, text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None,bg="gray15",fg="gray15"):
         super().__init__(master=master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
         self.corner=corner
         self.curb=curb
+        self.bg=bg
+        self.fg=fg
         self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
         
 class CustomText(CustomBase):
+    def getWorldpos(self,x=50,y=50):
+        super(CustomText,self).getWorldpos()
+        X=x/100
+        Y=y/100
+        X=self.sizex*X
+        Y=self.sizey*Y
+        return (self.posx+X),(self.posy+Y)
     def UPDATEGUI(self):
         super(CustomText,self).UPDATEGUI()
         self.directBody.configure(text=self.text)
     def setGUI(self):
         super(CustomText,self).setGUI()
-        self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,bg_color=self.master.cget("bg_color"),fg_color=self.master.cget("fg_color"))
+        self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,bg_color=self.master.directBody.cget("bg_color"),fg_color=self.master.directBody.cget("fg_color"))
         self.directBody.grid(row=0, column=0, padx=0)
-        self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
+        #self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
     def __init__(self, master, text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None):
         super().__init__(master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
         self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
@@ -510,6 +557,8 @@ class LCU_Controller(customtkinter.CTkFrame):
     '''
     LCUのコントローラーを設置するクラス
     '''
+    Commad_Line=None
+    
     Az_Real_F=None
     Az_Real_V_F=None
     Az_Prog_F=None
@@ -519,11 +568,225 @@ class LCU_Controller(customtkinter.CTkFrame):
     Az_SPEED_S=None
     Az_SPEED_F=None
     Az_SPEED_FF=None
-    Az_STOW=None
-
+    Az_STOW_F=None
+    Az_STOW_POS_B=None
+    Az_STOW_LOCK_B=None
+    Az_STOW_REL_B=None
+    Az_MODE_F=None
+    Az_MODE_PROG_B=None
+    Az_MODE_MANU_B=None
+    Az_MODE_STBY_B=None
+    
+    Az_Limit_F=None
+    Az_Limit_PLUS=None
+    Az_Limit_Unko_PB1=None
+    Az_Limit_Unko_PB2=None
+    Az_Limit_Unko_MB1=None
+    Az_Limit_Unko_MB2=None
+    Az_Limit_MNUS=None
+    
+    Az_LEVEL_V_3=None
+    Az_LEVEL_V_6=None
+    Az_LEVEL_V_0=None
+    Az_LEVEL_V_01=None
+    Az_LEVEL_V_001=None
+    Az_LEVEL_V_0001=None
+    Az_LEVEL_V_00001=None
+    
+    Az_LEVEL_VH_F=None
+    Az_LEVEL_VT_F=None
+    Az_LEVEL_VO_F=None
+    Az_LEVEL_V01_F=None
+    Az_LEVEL_V001_F=None
+    Az_LEVEL_V0001_F=None
+    Az_LEVEL_V00001_F=None
+    
+    Az_LEVEL_VHM_F=None
+    Az_LEVEL_VTM_F=None
+    Az_LEVEL_VOM_F=None
+    Az_LEVEL_V01M_F=None
+    Az_LEVEL_V001M_F=None
+    Az_LEVEL_V0001M_F=None
+    Az_LEVEL_V00001M_F=None
+    Az_LEVEL_PLUS_B=None
+    Az_LEVEL_MNUS_B=None
+    #---------------------------#
+    EL_Real_F=None
+    EL_Real_V_F=None
+    EL_Prog_F=None
+    EL_Prog_V_F=None
+    EL_RePr_F=None
+    EL_RePr_V_F=None
+    EL_SPEED_S=None
+    EL_SPEED_F=None
+    EL_SPEED_FF=None
+    EL_STOW_F=None
+    EL_STOW_POS_B=None
+    EL_STOW_LOCK_B=None
+    EL_STOW_REL_B=None
+    EL_MODE_F=None
+    EL_MODE_PROG_B=None
+    EL_MODE_MANU_B=None
+    EL_MODE_STBY_B=None
+    EL_LEVEL_V_F=None
+    
+    EL_LEVEL_VH_F=None
+    EL_LEVEL_VT_F=None
+    EL_LEVEL_VO_F=None
+    EL_LEVEL_V01_F=None
+    EL_LEVEL_V001_F=None
+    EL_LEVEL_V0001_F=None
+    EL_LEVEL_V00001_F=None
+    
+    EL_Limit_F=None
+    EL_Limit_PLUS=None
+    EL_Limit_Unko_PB1=None
+    EL_Limit_Unko_PB2=None
+    EL_Limit_Unko_MB1=None
+    EL_Limit_Unko_MB2=None
+    EL_Limit_MNUS=None
+    
+    EL_LEVEL_VHM_F=None
+    EL_LEVEL_VTM_F=None
+    EL_LEVEL_VOM_F=None
+    EL_LEVEL_V01M_F=None
+    EL_LEVEL_V001M_F=None
+    EL_LEVEL_V0001M_F=None
+    EL_LEVEL_V00001M_F=None
+    EL_LEVEL_PLUS_B=None
+    EL_LEVEL_MNUS_B=None
     
     def change_Az_Speed_F(self,str):
         self.Az_SPEED_F.update_gui(text=str)
+        
+    def change_El_Speed_F(self,str):
+        self.EL_SPEED_F.update_gui(text=str)
+        
+    def set_Az(self,AzV=360.0000):
+        global AZMIZTH_STR
+        AZMIZTH_STR=re
+        
+
+    def set_El(self,ElV=90.0000):
+        global ELEVATION_STR
+        ELEVATION_STR=re
+        
+    def changeAz100P(self):
+        self.change_AzmizValue(rate=100)
+
+    def changeAz10P(self):
+        self.change_AzmizValue(rate=10)
+        
+    def changeAz1P(self):
+        self.change_AzmizValue(rate=1)
+    
+    def changeAz01P(self):
+        self.change_AzmizValue(rate=0.1)
+        
+    def changeAz001P(self):
+        self.change_AzmizValue(rate=0.01)
+        
+    def changeAz0001P(self):
+        self.change_AzmizValue(rate=0.001)
+        
+    def changeAz00001P(self):
+        self.change_AzmizValue(rate=0.0001)
+        
+#----------------------------------------
+    def changeAz100M(self):
+        self.change_AzmizValue(rate=100,sing="-")
+
+    def changeAz10M(self):
+        self.change_AzmizValue(rate=10,sing="-")
+        
+    def changeAz1M(self):
+        self.change_AzmizValue(rate=1,sing="-")
+    
+    def changeAz01M(self):
+        self.change_AzmizValue(rate=0.1,sing="-")
+        
+    def changeAz001M(self):
+        self.change_AzmizValue(rate=0.01,sing="-")
+        
+    def changeAz0001M(self):
+        self.change_AzmizValue(rate=0.001,sing="-")
+        
+    def changeAz00001M(self):
+        self.change_AzmizValue(rate=0.0001,sing="-")
+
+#---------------------------------------
+
+    def changeEl100P(self):
+        self.change_ElevationValue(rate=100)
+
+    def changeEl10P(self):
+        self.change_ElevationValue(rate=10)
+        
+    def changeEl1P(self):
+        self.change_ElevationValue(rate=1)
+    
+    def changeEl01P(self):
+        self.change_ElevationValue(rate=0.1)
+        
+    def changeEl001P(self):
+        self.change_ElevationValue(rate=0.01)
+        
+    def changeEl0001P(self):
+        self.change_ElevationValue(rate=0.001)
+        
+    def changeEl00001P(self):
+        self.change_ElevationValue(rate=0.0001)
+
+#++++++++++++++++++++++++++++++++++++++++++++
+
+    def changeEl100M(self):
+        self.change_ElevationValue(rate=100,sing="-")
+
+    def changeEl10M(self):
+        self.change_ElevationValue(rate=10,sing="-")
+        
+    def changeEl1M(self):
+        self.change_ElevationValue(rate=1,sing="-")
+    
+    def changeEl01M(self):
+        self.change_ElevationValue(rate=0.1,sing="-")
+        
+    def changeEl001M(self):
+        self.change_ElevationValue(rate=0.01,sing="-")
+        
+    def changeEl0001M(self):
+        self.change_ElevationValue(rate=0.001,sing="-")
+        
+    def changeEl00001M(self):
+        self.change_ElevationValue(rate=0.0001,sing="-")
+
+#---------------------------------------------
+        
+    def change_AzmizValue(self,rate=1,sing="+"):
+        global ANTTENA_AZMIZTH
+        global AZMIZTH_STR
+        print("HEY!")
+        if sing=="+" and (ANTTENA_AZMIZTH+rate)<=AZMIZTH_MAX:
+            ANTTENA_AZMIZTH+=rate
+        if sing=="-" and (ANTTENA_AZMIZTH-rate)>=AZMIZTH_MIN:
+            ANTTENA_AZMIZTH-=rate
+        print("AZ="+str(ANTTENA_AZMIZTH))
+        self.set_Az(AzV=ANTTENA_AZMIZTH)
+        self.Az_LEVEL_V_F.update_gui(text=AZMIZTH_STR)
+               
+    def change_ElevationValue(self,rate=1,sing="+"):
+        global ANTENA_ELEVATION
+        global ELEVATION_STR
+        if sing=="+" and (ANTENA_ELEVATION+rate)<=ELEVATION_MAX:
+            ANTENA_ELEVATION+=rate
+        if sing=="-" and (ANTENA_ELEVATION-rate)>=ELEVATION_MIN:
+            ANTENA_ELEVATION-=rate
+        self.set_El(ElV=ANTENA_ELEVATION)
+        self.EL_LEVEL_V_F.update_gui(text=ELEVATION_STR)
+    
+    def printS(self):
+        print("HELLOW")
+                
     
     def __init__(self, master):
         super().__init__(master)
@@ -532,19 +795,113 @@ class LCU_Controller(customtkinter.CTkFrame):
         ACU_F.update()
         ACU_F.directBody.update()
         #ACU_F.label.update()
-        Azimuth_T= CustomText(master=ACU_F,text="Azmizu",text_size=20,X=30,Y=5,sizeX=10,sizeY=5)
-        self.Az_Real_F=CustomText(master=ACU_F,text="REAL:",text_size=30,X=5,Y=18,sizeX=10,sizeY=5)
-        self.Az_Real_V_F=CustomText(master=ACU_F,text="169.12345",text_size=35,X=18,Y=17,sizeX=10,sizeY=5)
-        self.Az_Prog_F=CustomText(master=ACU_F,text="PROG:",text_size=30,X=5,Y=30,sizeX=10,sizeY=5)
-        self.Az_Real_V_F=CustomText(master=ACU_F,text="169.12345",text_size=35,X=18,Y=29,sizeX=10,sizeY=5)
-        self.Az_RePr_F=CustomText(master=ACU_F,text="DIFF:",text_size=30,X=5,Y=41,sizeX=10,sizeY=5)
-        self.Az_RePr_V_F=CustomText(master=ACU_F,text="169.12345",text_size=35,X=18,Y=40,sizeX=10,sizeY=5)
-        self.Az_SPEED_S=CustomScaler(master=ACU_F,sizeX=30,sizeY=5,com=self.change_Az_Speed_F,X=30,Y=63)
-        self.Az_SPEED_F=CustomText(master=ACU_F,parent=self.Az_SPEED_S,X=50,Y=-130,text="0",text_size=25,sizeX=5,sizeY=3)
-        self.Az_SPEED_FF=CustomText(master=ACU_F,parent=self.Az_SPEED_S,X=-30,Y=-10,text="SPEED:",text_size=25,sizeX=5,sizeY=3)
+        self.Commad_Line=CustomTextBox2(master=ACU_F,text="None",text_size=20,X=90,Y=50,sizeX=30,sizeY=100)
+        Azimuth_T= CustomText(master=ACU_F,text="Azmizu",text_size=20,X=15,Y=5,sizeX=10,sizeY=5)
+        self.Az_Real_F=CustomText(master=ACU_F,parent=Azimuth_T,text="REAL:",text_size=30,X=-60,Y=180,sizeX=10,sizeY=5)
+        self.Az_Real_V_F=CustomText(master=ACU_F,parent=self.Az_Real_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        self.Az_Prog_F=CustomText(master=ACU_F,parent=self.Az_Real_F,text="PROG:",text_size=30,X=50,Y=200,sizeX=10,sizeY=5)
+        self.Az_Prog_V_F=CustomText(master=ACU_F,parent=self.Az_Prog_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        
+        self.Az_RePr_F=CustomText(master=ACU_F,parent=self.Az_Prog_F,text="DIFF:",text_size=30,X=50,Y=200,sizeX=10,sizeY=5)
+        self.Az_RePr_V_F=CustomText(master=ACU_F,parent=self.Az_RePr_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        
+        self.Az_SPEED_FF=CustomText(master=ACU_F,parent=self.Az_RePr_F,X=28,Y=350,text="SPEED:",text_size=25,sizeX=5,sizeY=3)
+        self.Az_SPEED_S=CustomScaler(master=ACU_F,parent=self.Az_SPEED_FF,sizeX=20,sizeY=5,com=self.change_Az_Speed_F,X=400,Y=150)
+        self.Az_SPEED_F=CustomText(master=ACU_F,parent=self.Az_SPEED_S,X=45,Y=-130,text="0",text_size=25,sizeX=5,sizeY=3)
         self.change_Az_Speed_F(self.Az_SPEED_S.scaler.get())
         
-        #self=CustomCheckBox(master=ACU_F,text="TEST")
+        self.Az_STOW_F=CustomText(master=ACU_F,parent=self.Az_SPEED_FF,X=50,Y=400,text="STOW:",text_size=25,sizeX=5,sizeY=3)
+        self.Az_STOW_POS_B=CustomButton(master=ACU_F,parent=self.Az_STOW_F,X=260,Y=40,text="POS",text_size=25,sizeX=6,sizeY=2)
+        self.Az_STOW_LOCK_B=CustomButton(master=ACU_F,parent=self.Az_STOW_POS_B,X=200,Y=50,text="LOCK",text_size=25,sizeX=6,sizeY=2)
+        self.Az_STOW_REL_B=CustomButton(master=ACU_F,parent=self.Az_STOW_LOCK_B,X=200,Y=50,text="REL",text_size=25,sizeX=6,sizeY=2)
+        
+        self.Az_Limit_F=CustomText(master=ACU_F,parent=self.Az_STOW_F,X=50,Y=400,text="LIMIT:",text_size=25,sizeX=5,sizeY=3)
+        self.Az_Limit_MNUS=CustomText(master=ACU_F,parent=self.Az_Limit_F,X=200,Y=50,text="-",text_size=25,sizeX=1,sizeY=1)
+        self.Az_Limit_Unko_MB1=CustomChekButton(master=ACU_F,parent=self.Az_Limit_MNUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        self.Az_Limit_Unko_MB2=CustomChekButton(master=ACU_F,parent=self.Az_Limit_Unko_MB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        self.Az_Limit_PLUS=CustomText(master=ACU_F,parent=self.Az_Limit_F,X=450,Y=50,text="+",text_size=25,sizeX=1,sizeY=1)
+        self.Az_Limit_Unko_PB1=CustomChekButton(master=ACU_F,parent=self.Az_Limit_PLUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        self.Az_Limit_Unko_PB2=CustomChekButton(master=ACU_F,parent=self.Az_Limit_Unko_PB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        
+        self.Az_MODE_F=CustomText(master=ACU_F,parent=self.Az_Limit_F,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
+        self.Az_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.Az_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2)
+        self.Az_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.Az_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2)
+        self.Az_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.Az_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2)
+        
+        self.Az_LEVEL_V_3=CustomText(master=ACU_F,parent=self.Az_MODE_F,X=300,Y=500,text="3",text_size=26,sizeX=1,sizeY=2)
+        self.Az_LEVEL_V_6=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_3,X=200,Y=50,text="6",text_size=26,sizeX=1,sizeY=2)
+        
+        a=250
+        self.Az_LEVEL_VH_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V_3,X=20,Y=-60,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz100P)
+        self.Az_LEVEL_VT_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VH_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz10P)
+        self.Az_LEVEL_VO_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VT_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz1P)
+        self.Az_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VO_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01P)
+        self.Az_LEVEL_V001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V01_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz001P)
+        self.Az_LEVEL_V0001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V001_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz0001P)
+        self.Az_LEVEL_V00001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V0001_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz00001P)
+        self.Az_LEVEL_PLUS_B=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VH_F,X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
+        b=100
+        self.Az_LEVEL_VHM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V_3,X=20,Y=240,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz100M)
+        self.Az_LEVEL_VTM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VHM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz10M)
+        self.Az_LEVEL_VOM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VTM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz1M)
+        self.Az_LEVEL_V01M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VOM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01M)
+        self.Az_LEVEL_V001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V01M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz001M)
+        self.Az_LEVEL_V0001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V001M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz0001M)
+        self.Az_LEVEL_V00001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V0001M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz00001M)
+        self.Az_LEVEL_MNUS_B=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VHM_F,X=-1*a,Y=50,text="-",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
+        #EL_VERSION^---------------------------------------------------------------------------------------------------------------------------------#
+        Elevation_T= CustomText(master=ACU_F,text="Elevation",text_size=20,X=55,Y=5,sizeX=10,sizeY=5)
+        self.EL_Real_F=CustomText(master=ACU_F,parent=Elevation_T,text="REAL:",text_size=30,X=-60,Y=180,sizeX=10,sizeY=5)
+        self.EL_Real_V_F=CustomText(master=ACU_F,parent=self.EL_Real_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        self.EL_Prog_F=CustomText(master=ACU_F,parent=self.EL_Real_F,text="PROG:",text_size=30,X=50,Y=200,sizeX=10,sizeY=5)
+        self.EL_Prog_V_F=CustomText(master=ACU_F,parent=self.EL_Prog_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        
+        self.EL_RePr_F=CustomText(master=ACU_F,parent=self.EL_Prog_F,text="DIFF:",text_size=30,X=50,Y=200,sizeX=10,sizeY=5)
+        self.EL_RePr_V_F=CustomText(master=ACU_F,parent=self.EL_RePr_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        
+        self.EL_SPEED_FF=CustomText(master=ACU_F,parent=self.EL_RePr_F,X=28,Y=350,text="SPEED:",text_size=25,sizeX=5,sizeY=3)
+        self.EL_SPEED_S=CustomScaler(master=ACU_F,parent=self.EL_SPEED_FF,sizeX=20,sizeY=5,com=self.change_El_Speed_F,X=400,Y=150)
+        self.EL_SPEED_F=CustomText(master=ACU_F,parent=self.EL_SPEED_S,X=45,Y=-130,text="0",text_size=25,sizeX=5,sizeY=3)
+        self.change_El_Speed_F(self.EL_SPEED_S.scaler.get())
+        
+        self.EL_STOW_F=CustomText(master=ACU_F,parent=self.EL_SPEED_FF,X=50,Y=400,text="STOW:",text_size=25,sizeX=5,sizeY=3)
+        self.EL_STOW_POS_B=CustomButton(master=ACU_F,parent=self.EL_STOW_F,X=260,Y=40,text="POS",text_size=25,sizeX=6,sizeY=2)
+        self.EL_STOW_LOCK_B=CustomButton(master=ACU_F,parent=self.EL_STOW_POS_B,X=200,Y=50,text="LOCK",text_size=25,sizeX=6,sizeY=2)
+        self.EL_STOW_REL_B=CustomButton(master=ACU_F,parent=self.EL_STOW_LOCK_B,X=200,Y=50,text="REL",text_size=25,sizeX=6,sizeY=2)
+        
+        self.EL_Limit_F=CustomText(master=ACU_F,parent=self.EL_STOW_F,X=50,Y=400,text="LIMIT:",text_size=25,sizeX=5,sizeY=3)
+        self.EL_Limit_MNUS=CustomText(master=ACU_F,parent=self.EL_Limit_F,X=200,Y=50,text="-",text_size=25,sizeX=1,sizeY=1)
+        self.EL_Limit_Unko_MB1=CustomChekButton(master=ACU_F,parent=self.EL_Limit_MNUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        self.EL_Limit_Unko_MB2=CustomChekButton(master=ACU_F,parent=self.EL_Limit_Unko_MB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        self.EL_Limit_PLUS=CustomText(master=ACU_F,parent=self.EL_Limit_F,X=450,Y=50,text="+",text_size=25,sizeX=1,sizeY=1)
+        self.EL_Limit_Unko_PB1=CustomChekButton(master=ACU_F,parent=self.EL_Limit_PLUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        self.EL_Limit_Unko_PB2=CustomChekButton(master=ACU_F,parent=self.EL_Limit_Unko_PB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        
+        self.EL_MODE_F=CustomText(master=ACU_F,parent=self.EL_Limit_F,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
+        self.EL_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.EL_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2)
+        self.EL_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.EL_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2)
+        self.EL_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.EL_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2)
+        
+        self.EL_LEVEL_V_F=CustomFlame(master=ACU_F,parent=self.EL_MODE_F,X=300,Y=500,text="9 0.0 0 0 0",text_size=26,sizeX=5,sizeY=3)
+        a=250
+        #self.EL_LEVEL_VH_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_F,X=20,Y=-60,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
+        self.EL_LEVEL_VT_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10P)
+        self.EL_LEVEL_VO_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VT_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl1P)
+        self.EL_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VO_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl01P)
+        self.EL_LEVEL_V001_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V01_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl001P)
+        self.EL_LEVEL_V0001_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V001_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl0001P)
+        self.EL_LEVEL_V00001_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V0001_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl00001P)
+        self.EL_LEVEL_PLUS_B=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VT_F,X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
+        b=100
+        #self.EL_LEVEL_VHM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_F,X=20,Y=240,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
+        self.EL_LEVEL_VTM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10M)
+        self.EL_LEVEL_VOM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VTM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl1M)
+        self.EL_LEVEL_V01M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VOM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl01M)
+        self.EL_LEVEL_V001M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V01M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl001M)
+        self.EL_LEVEL_V0001M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V001M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl0001M)
+        self.EL_LEVEL_V00001M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V0001M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl00001M)
+        self.EL_LEVEL_MNUS_B=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VTM_F,X=-1*a,Y=50,text="-",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
+
 
 class ACU_GUI(customtkinter.CTk):
     ACU_Monitor=None
@@ -699,7 +1056,7 @@ class ACU_GUI(customtkinter.CTk):
         self.SLAVE_MODE_BUTTOM=CustomButton(master=self,text="SLAVE",X=40,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30)
         self.INDIV_MODE_BUTTOM=CustomButton(master=self,text="INDIV",X=55,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30)
         self.LOCK_BUTTOM=CustomButton(master=self,text="LOCK",X=5,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30)
-        self.OPTICAL_TRAKING_BUTTOM=CustomChekButton(master=self,text="OPTICAL TRAKING MODE",X=20,Y=11,sizeX=10,sizeY=5,text_size=15)
+        self.OPTICAL_TRAKING_BUTTOM=CustomChekButton(master=self,text="OPTICAL TRAKING MODE",X=20,Y=13,sizeX=10,sizeY=5,text_size=15,texcolor="white")
         ACU=LCU_Controller(master=self)
     
 
@@ -718,8 +1075,6 @@ class ACU_GUI(customtkinter.CTk):
     
         #button=CustomButton(master=self,text="HELLO!",text_size=30,X=50,Y=50,com=self.selected)
         
-    
-
 
 class StartGUI():
     gui=None
