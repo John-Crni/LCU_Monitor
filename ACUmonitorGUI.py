@@ -637,7 +637,14 @@ class LCU_Controller(customtkinter.CTkFrame):
     EL_LEVEL_V001_F=None
     EL_LEVEL_V0001_F=None
     EL_LEVEL_V00001_F=None
-    
+
+    EL_LEVEL_V_9=None
+    EL_LEVEL_V_0=None
+    EL_LEVEL_V_01=None
+    EL_LEVEL_V_001=None
+    EL_LEVEL_V_0001=None
+    EL_LEVEL_V_00001=None
+
     EL_Limit_F=None
     EL_Limit_PLUS=None
     EL_Limit_Unko_PB1=None
@@ -664,7 +671,14 @@ class LCU_Controller(customtkinter.CTkFrame):
         
     def set_Az(self,AzV=360.0000):
         global AZMIZTH_STR
-        AZMIZTH_STR=re
+        AZMIZTH_STR=str(AzV)
+        self.Az_LEVEL_V_3.update_gui(text=AZMIZTH_STR[0])
+        self.Az_LEVEL_V_6.update_gui(text=AZMIZTH_STR[1])
+        self.Az_LEVEL_V_0.update_gui(text=AZMIZTH_STR[2])
+        self.Az_LEVEL_V_01.update_gui(text=AZMIZTH_STR[4])
+        self.Az_LEVEL_V_001.update_gui(text=AZMIZTH_STR[5])
+        self.Az_LEVEL_V_0001.update_gui(text=AZMIZTH_STR[6])
+        self.Az_LEVEL_V_00001.update_gui(text=AZMIZTH_STR[7])
         
 
     def set_El(self,ElV=90.0000):
@@ -765,14 +779,11 @@ class LCU_Controller(customtkinter.CTkFrame):
     def change_AzmizValue(self,rate=1,sing="+"):
         global ANTTENA_AZMIZTH
         global AZMIZTH_STR
-        print("HEY!")
         if sing=="+" and (ANTTENA_AZMIZTH+rate)<=AZMIZTH_MAX:
             ANTTENA_AZMIZTH+=rate
         if sing=="-" and (ANTTENA_AZMIZTH-rate)>=AZMIZTH_MIN:
             ANTTENA_AZMIZTH-=rate
-        print("AZ="+str(ANTTENA_AZMIZTH))
         self.set_Az(AzV=ANTTENA_AZMIZTH)
-        self.Az_LEVEL_V_F.update_gui(text=AZMIZTH_STR)
                
     def change_ElevationValue(self,rate=1,sing="+"):
         global ANTENA_ELEVATION
@@ -806,7 +817,7 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.Az_RePr_V_F=CustomText(master=ACU_F,parent=self.Az_RePr_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
         
         self.Az_SPEED_FF=CustomText(master=ACU_F,parent=self.Az_RePr_F,X=28,Y=350,text="SPEED:",text_size=25,sizeX=5,sizeY=3)
-        self.Az_SPEED_S=CustomScaler(master=ACU_F,parent=self.Az_SPEED_FF,sizeX=20,sizeY=5,com=self.change_Az_Speed_F,X=400,Y=150)
+        self.Az_SPEED_S=CustomScaler(master=ACU_F,parent=self.Az_SPEED_FF,sizeX=20,sizeY=4,com=self.change_Az_Speed_F,X=400,Y=150,bg=ACU_F.directBody.cget("bg_color"))
         self.Az_SPEED_F=CustomText(master=ACU_F,parent=self.Az_SPEED_S,X=45,Y=-130,text="0",text_size=25,sizeX=5,sizeY=3)
         self.change_Az_Speed_F(self.Az_SPEED_S.scaler.get())
         
@@ -828,28 +839,40 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.Az_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.Az_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2)
         self.Az_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.Az_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2)
         
+        diff=20
         self.Az_LEVEL_V_3=CustomText(master=ACU_F,parent=self.Az_MODE_F,X=300,Y=500,text="3",text_size=26,sizeX=1,sizeY=2)
-        self.Az_LEVEL_V_6=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_3,X=200,Y=50,text="6",text_size=26,sizeX=1,sizeY=2)
+        self.Az_LEVEL_V_6=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_3,X=200+diff,Y=50,text="6",text_size=26,sizeX=1,sizeY=2)
+        self.Az_LEVEL_V_0=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_6,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
+        commma=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_0,X=200,Y=50,text=".",text_size=26,sizeX=1,sizeY=2)
+        self.Az_LEVEL_V_01=CustomText(master=ACU_F,parent=commma,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
+        diff=40
+        self.Az_LEVEL_V_001=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_01,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
+        self.Az_LEVEL_V_0001=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_001,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
+        self.Az_LEVEL_V_00001=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_0001,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
         
         a=250
-        self.Az_LEVEL_VH_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V_3,X=20,Y=-60,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz100P)
+        diff=100
+        self.Az_LEVEL_VH_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V_3,X=20,Y=-90,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz100P)
         self.Az_LEVEL_VT_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VH_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz10P)
         self.Az_LEVEL_VO_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VT_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz1P)
-        self.Az_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VO_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01P)
-        self.Az_LEVEL_V001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V01_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz001P)
-        self.Az_LEVEL_V0001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V001_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz0001P)
-        self.Az_LEVEL_V00001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V0001_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz00001P)
+        self.Az_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VO_F,X=a+diff,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01P)
+        diff=0
+        self.Az_LEVEL_V001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V01_F,X=a+diff,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz001P)
+        self.Az_LEVEL_V0001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V001_F,X=a+diff,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz0001P)
+        self.Az_LEVEL_V00001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V0001_F,X=a+diff,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz00001P)
         self.Az_LEVEL_PLUS_B=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VH_F,X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
         b=100
-        self.Az_LEVEL_VHM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V_3,X=20,Y=240,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz100M)
+        diff=100
+        self.Az_LEVEL_VHM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V_3,X=20,Y=320,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz100M)
         self.Az_LEVEL_VTM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VHM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz10M)
         self.Az_LEVEL_VOM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VTM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz1M)
-        self.Az_LEVEL_V01M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VOM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01M)
-        self.Az_LEVEL_V001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V01M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz001M)
-        self.Az_LEVEL_V0001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V001M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz0001M)
-        self.Az_LEVEL_V00001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V0001M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz00001M)
+        self.Az_LEVEL_V01M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VOM_F,X=a+diff,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01M)
+        diff=0
+        self.Az_LEVEL_V001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V01M_F,X=a+diff,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz001M)
+        self.Az_LEVEL_V0001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V001M_F,X=a+diff,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz0001M)
+        self.Az_LEVEL_V00001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V0001M_F,X=a+diff,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz00001M)
         self.Az_LEVEL_MNUS_B=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VHM_F,X=-1*a,Y=50,text="-",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
-        #EL_VERSION^---------------------------------------------------------------------------------------------------------------------------------#
+        #EL_VERSION---------------------------------------------------------------------------------------------------------------------------------------#
         Elevation_T= CustomText(master=ACU_F,text="Elevation",text_size=20,X=55,Y=5,sizeX=10,sizeY=5)
         self.EL_Real_F=CustomText(master=ACU_F,parent=Elevation_T,text="REAL:",text_size=30,X=-60,Y=180,sizeX=10,sizeY=5)
         self.EL_Real_V_F=CustomText(master=ACU_F,parent=self.EL_Real_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
@@ -1014,8 +1037,8 @@ class ACU_GUI(customtkinter.CTk):
         global DEFAULT_WINDOW_WIDTH
         global SELECTED_COM
         print("ACU_GUI_BEGUN!")
-        customtkinter.set_appearance_mode("green")  # Modes: system (default), light, dark
-        customtkinter.set_default_color_theme("blue")  # Themes: blue (default), dark-blue, green
+        customtkinter.set_appearance_mode("Dark")  # Modes: system (default), light, dark
+        customtkinter.set_default_color_theme("dark-blue")  # Themes: blue (default), dark-blue, green
         time.updateAllTime()
         
         self.geometry(str(DEFAULT_WINDOW_WIDTH)+"x"+str(DEFAULT_WINDOW_HEIGHT))
