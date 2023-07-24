@@ -20,3 +20,5 @@ https://qiita.com/nishimuraatsushi/items/06165d00e1470f57de23
 (スライドバー)
 https://imagingsolution.net/program/python/tkinter/scale_trackbar/
 
+https://qiita.com/teahat/items/050b572aad0d1686370b
+
