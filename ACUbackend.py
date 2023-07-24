@@ -13,8 +13,6 @@ class ACUBackEnd():
     ASYNC_TEST=None
     
     SelectedCOM=None
-
-
     
     def __init__(self):
         print("ACUBackEnd_ISBEGUN!")
@@ -115,7 +113,6 @@ class AsyncedClass():
         if self.sleepTime>0:
             time.sleep(float(self.sleepTime))
 
-        
 class Serialcommunicator():
     Serial=None
     RoopBackCom= [ 0xB6, 0x01, 0x02, 0x00 ]
@@ -204,8 +201,6 @@ class comMonitor(AsyncedClass):
         self.master=ma
         super().__init__(acu)
         
-        
-
 class SerialCommunicator2(AsyncedClass):
     T=0.1
     st="None"
@@ -291,7 +286,6 @@ class PRINT():
     def Async(self):
         time.sleep(0.1)
         print("せいこうだ!")
-
 
 class Async(threading.Thread):
     FuncClass=None

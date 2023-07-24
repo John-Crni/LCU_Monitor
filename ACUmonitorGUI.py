@@ -11,14 +11,17 @@ DEFAULT_WINDOW_WIDTH=1110
 DEFAULT_WINDOW_HEIGHT=700
 SELECTED_COM="NONE"
 RADIO_BUTTOM_NUM=0
-ANTTENA_AZMIZTH=360.0000
+ANTTENA_AZMIZTH=3600000
 AZMIZTH_STR="3 6 0. 0 0 0 0"
-AZMIZTH_MAX=360
+AZMIZTH_MAX=3600000
 AZMIZTH_MIN=0
-ANTENA_ELEVATION=90.0000
+ANTENA_ELEVATION=900000
 ELEVATION_STR="9 0. 0 0 0 0"
-ELEVATION_MAX=90
+ELEVATION_MAX=900000
 ELEVATION_MIN=0
+
+IS_SLAVE_MODE=False
+IS_INDIVISUAL_MODE=True
 
 class CustomBase(customtkinter.CTkFrame):
     posx=0
@@ -145,8 +148,6 @@ class CustomScaler(customtkinter.CTkFrame):
         Y=y/100
         X=self.sizex*X
         Y=self.sizey*Y
-        print("X1="+str(self.posx+X))
-        print("Y1="+str(self.posy+Y))
         return (self.posx+X),(self.posy+Y)
     def __init__(self, master,text_size=30,sizeX=13,sizeY=5,X=50,Y=50,texcolor="white",bg="red",fg="#3B8ED0",cornerradius=10,com=None,first_value=0,end_value=100,parent=None):
         super().__init__(master)
@@ -358,6 +359,12 @@ class CustomButton(CustomBase):
     bg="#3B8ED0"
     com=None
     cornerradius=10
+    def setDefaultColor(self):
+        self.directBody.configure(fg_color="#3B8ED0")
+        self.fg="#3B8ED0"
+    def setColor(self,color="red"):
+        self.directBody.configure(fg_color=color)
+        self.fg=color
     def selfUpdateValue(self,texcolor="white",fg="#3B8ED0",hg="red",com=None,cornerradius=10,bg="#3B8ED0"):
         if texcolor!="none":
             self.texcolor=texcolor
@@ -669,110 +676,233 @@ class LCU_Controller(customtkinter.CTkFrame):
     def change_El_Speed_F(self,str):
         self.EL_SPEED_F.update_gui(text=str)
         
-    def set_Az(self,AzV=360.0000):
+    def set_Az(self,AzV=3600000): 
         global AZMIZTH_STR
         AZMIZTH_STR=str(AzV)
-        self.Az_LEVEL_V_3.update_gui(text=AZMIZTH_STR[0])
-        self.Az_LEVEL_V_6.update_gui(text=AZMIZTH_STR[1])
-        self.Az_LEVEL_V_0.update_gui(text=AZMIZTH_STR[2])
-        self.Az_LEVEL_V_01.update_gui(text=AZMIZTH_STR[4])
-        self.Az_LEVEL_V_001.update_gui(text=AZMIZTH_STR[5])
-        self.Az_LEVEL_V_0001.update_gui(text=AZMIZTH_STR[6])
-        self.Az_LEVEL_V_00001.update_gui(text=AZMIZTH_STR[7])
+        LEN=len(AZMIZTH_STR)
+        num=AzV
+        unkown="-"
+        Int1000000=(int(num/1000000))
+        print("I1000000="+str(Int1000000))
+        num-=(Int1000000*1000000)
+        Int100000=(int(num/100000))
+        print("I100000="+str(Int100000))
         
+        num-=(Int100000*100000)
+        Int10000=(int(num/10000))
+        print("I10000="+str(Int10000))
 
-    def set_El(self,ElV=90.0000):
+        num-=(Int10000*10000)
+        Int1000=(int(num/1000))
+        print("I1000="+str(Int1000))
+    
+        num-=(Int1000*1000)
+        Int100=(int(num/100))
+        print("I100="+str(Int100))
+        
+        num-=(Int100*100)
+        Int10=(int(num/10))
+        print("I10="+str(Int10))
+        
+        num-=(Int10*10)
+        Int1=(int(num))
+        print("I1="+str(Int1))
+
+        
+        if Int1000000<1:
+            IsHundret="0"
+        else:
+            IsHundret=str(Int1000000)
+            
+        if Int100000<1:
+            IsTen="0"
+        else:
+            IsTen=str(Int100000)
+
+        if Int10000<1:
+            IsOne="0"
+        else:
+            IsOne=str(Int10000)
+            
+        if Int1000<1:
+            Is01="0"
+        else:
+            Is01=str(Int1000)
+            
+        if Int100<1:
+            Is001="0"
+        else:
+            Is001=str(Int100)
+            
+        if Int10<1:
+            Is0001="0"
+        else:
+            Is0001=str(Int10)
+            
+        if Int1<1:
+            Is00001="0"
+        else:
+            Is00001=str(Int1)
+
+        self.Az_LEVEL_V_3.update_gui(text=IsHundret)
+        self.Az_LEVEL_V_6.update_gui(text=IsTen)
+        self.Az_LEVEL_V_0.update_gui(text=IsOne)
+        self.Az_LEVEL_V_01.update_gui(text=Is01)
+        self.Az_LEVEL_V_001.update_gui(text=Is001)
+        self.Az_LEVEL_V_0001.update_gui(text=Is0001)
+        self.Az_LEVEL_V_00001.update_gui(text=Is00001)
+        
+    def set_El(self,ElV=900000):
         global ELEVATION_STR
-        ELEVATION_STR=re
+        ELEVATION_STR=str(ElV)
+        LEN=len(ELEVATION_STR)
+        num=ElV
+        unkown="-"
+        
+        Int100000=(int(num/100000))
+        num-=(Int100000*100000)
+        
+        Int10000=(int(num/10000))
+        num-=(Int10000*10000)
+        
+        Int1000=(int(num/1000))
+        num-=(Int1000*1000)
+        
+        Int100=(int(num/100))
+        num-=(Int100*100)
+        
+        Int10=(int(num/10))
+        num-=(Int10*10)
+        
+        Int1=(int(num))
+        
+        IsTen=""
+        IsOne=""
+        Is01=""
+        Is001=""
+        Is0001=""
+        Is00001=""
+        
+        if Int100000<1:
+            IsTen="0"
+        else:
+            IsTen=str(Int100000)
+
+        if Int10000<1:
+            IsOne="0"
+        else:
+            IsOne=str(Int10000)
+            
+        if Int1000<1:
+            Is01="0"
+        else:
+            Is01=str(Int1000)
+            
+        if Int100<1:
+            Is001="0"
+        else:
+            Is001=str(Int100)
+            
+        if Int10<1:
+            Is0001="0"
+        else:
+            Is0001=str(Int10)
+            
+        if Int1<1:
+            Is00001="0"
+        else:
+            Is00001=str(Int1)
+
+        self.EL_LEVEL_V_9.update_gui(text=IsTen)
+        self.EL_LEVEL_V_0.update_gui(text=IsOne)
+        self.EL_LEVEL_V_01.update_gui(text=Is01)
+        self.EL_LEVEL_V_001.update_gui(text=Is001)
+        self.EL_LEVEL_V_0001.update_gui(text=Is0001)
+        self.EL_LEVEL_V_00001.update_gui(text=Is00001)
         
     def changeAz100P(self):
-        self.change_AzmizValue(rate=100)
+        self.change_AzmizValue(rate=1000000)
 
     def changeAz10P(self):
-        self.change_AzmizValue(rate=10)
+        self.change_AzmizValue(rate=100000)
         
     def changeAz1P(self):
-        self.change_AzmizValue(rate=1)
+        self.change_AzmizValue(rate=10000)
     
     def changeAz01P(self):
-        self.change_AzmizValue(rate=0.1)
+        self.change_AzmizValue(rate=1000)
         
     def changeAz001P(self):
-        self.change_AzmizValue(rate=0.01)
+        self.change_AzmizValue(rate=100)
         
     def changeAz0001P(self):
-        self.change_AzmizValue(rate=0.001)
+        self.change_AzmizValue(rate=10)
         
     def changeAz00001P(self):
-        self.change_AzmizValue(rate=0.0001)
+        self.change_AzmizValue(rate=1)
         
 #----------------------------------------
     def changeAz100M(self):
-        self.change_AzmizValue(rate=100,sing="-")
+        self.change_AzmizValue(rate=1000000,sing="-")
 
     def changeAz10M(self):
-        self.change_AzmizValue(rate=10,sing="-")
+        self.change_AzmizValue(rate=100000,sing="-")
         
     def changeAz1M(self):
-        self.change_AzmizValue(rate=1,sing="-")
+        self.change_AzmizValue(rate=10000,sing="-")
     
     def changeAz01M(self):
-        self.change_AzmizValue(rate=0.1,sing="-")
+        self.change_AzmizValue(rate=1000,sing="-")
         
     def changeAz001M(self):
-        self.change_AzmizValue(rate=0.01,sing="-")
+        self.change_AzmizValue(rate=100,sing="-")
         
     def changeAz0001M(self):
-        self.change_AzmizValue(rate=0.001,sing="-")
+        self.change_AzmizValue(rate=10,sing="-")
         
     def changeAz00001M(self):
-        self.change_AzmizValue(rate=0.0001,sing="-")
+        self.change_AzmizValue(rate=1,sing="-")
 
 #---------------------------------------
 
-    def changeEl100P(self):
-        self.change_ElevationValue(rate=100)
-
     def changeEl10P(self):
-        self.change_ElevationValue(rate=10)
+        self.change_ElevationValue(rate=100000)
         
     def changeEl1P(self):
-        self.change_ElevationValue(rate=1)
+        self.change_ElevationValue(rate=10000)
     
     def changeEl01P(self):
-        self.change_ElevationValue(rate=0.1)
+        self.change_ElevationValue(rate=1000)
         
     def changeEl001P(self):
-        self.change_ElevationValue(rate=0.01)
+        self.change_ElevationValue(rate=100)
         
     def changeEl0001P(self):
-        self.change_ElevationValue(rate=0.001)
+        self.change_ElevationValue(rate=10)
         
     def changeEl00001P(self):
-        self.change_ElevationValue(rate=0.0001)
+        self.change_ElevationValue(rate=1)
 
 #++++++++++++++++++++++++++++++++++++++++++++
 
-    def changeEl100M(self):
-        self.change_ElevationValue(rate=100,sing="-")
 
     def changeEl10M(self):
-        self.change_ElevationValue(rate=10,sing="-")
+        self.change_ElevationValue(rate=100000,sing="-")
         
     def changeEl1M(self):
-        self.change_ElevationValue(rate=1,sing="-")
+        self.change_ElevationValue(rate=10000,sing="-")
     
     def changeEl01M(self):
-        self.change_ElevationValue(rate=0.1,sing="-")
+        self.change_ElevationValue(rate=1000,sing="-")
         
     def changeEl001M(self):
-        self.change_ElevationValue(rate=0.01,sing="-")
+        self.change_ElevationValue(rate=100,sing="-")
         
     def changeEl0001M(self):
-        self.change_ElevationValue(rate=0.001,sing="-")
+        self.change_ElevationValue(rate=10,sing="-")
         
     def changeEl00001M(self):
-        self.change_ElevationValue(rate=0.0001,sing="-")
+        self.change_ElevationValue(rate=1,sing="-")
 
 #---------------------------------------------
         
@@ -793,7 +923,7 @@ class LCU_Controller(customtkinter.CTkFrame):
         if sing=="-" and (ANTENA_ELEVATION-rate)>=ELEVATION_MIN:
             ANTENA_ELEVATION-=rate
         self.set_El(ElV=ANTENA_ELEVATION)
-        self.EL_LEVEL_V_F.update_gui(text=ELEVATION_STR)
+        #self.EL_LEVEL_V_F.update_gui(text=ELEVATION_STR)
     
     def printS(self):
         print("HELLOW")
@@ -807,7 +937,7 @@ class LCU_Controller(customtkinter.CTkFrame):
         ACU_F.directBody.update()
         #ACU_F.label.update()
         self.Commad_Line=CustomTextBox2(master=ACU_F,text="None",text_size=20,X=90,Y=50,sizeX=30,sizeY=100)
-        Azimuth_T= CustomText(master=ACU_F,text="Azmizu",text_size=20,X=15,Y=5,sizeX=10,sizeY=5)
+        Azimuth_T= CustomText(master=ACU_F,text="Azmizu",text_size=20,X=16,Y=5,sizeX=10,sizeY=5)
         self.Az_Real_F=CustomText(master=ACU_F,parent=Azimuth_T,text="REAL:",text_size=30,X=-60,Y=180,sizeX=10,sizeY=5)
         self.Az_Real_V_F=CustomText(master=ACU_F,parent=self.Az_Real_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
         self.Az_Prog_F=CustomText(master=ACU_F,parent=self.Az_Real_F,text="PROG:",text_size=30,X=50,Y=200,sizeX=10,sizeY=5)
@@ -905,21 +1035,28 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.EL_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.EL_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2)
         self.EL_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.EL_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2)
         
-        self.EL_LEVEL_V_F=CustomFlame(master=ACU_F,parent=self.EL_MODE_F,X=300,Y=500,text="9 0.0 0 0 0",text_size=26,sizeX=5,sizeY=3)
+        diff=20
+        self.EL_LEVEL_V_9=CustomText(master=ACU_F,parent=self.EL_MODE_F,X=300,Y=500,text="9",text_size=26,sizeX=1,sizeY=2)
+        self.EL_LEVEL_V_0=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_9,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
+        commma=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_0,X=200,Y=50,text=".",text_size=26,sizeX=1,sizeY=2)
+        self.EL_LEVEL_V_01=CustomText(master=ACU_F,parent=commma,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
+        diff=40
+        self.EL_LEVEL_V_001=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_01,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
+        self.EL_LEVEL_V_0001=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_001,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
+        self.EL_LEVEL_V_00001=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_0001,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
         a=250
-        #self.EL_LEVEL_VH_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_F,X=20,Y=-60,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
-        self.EL_LEVEL_VT_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10P)
+        d=-200
+        self.EL_LEVEL_VT_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_9,X=a+d,Y=-90,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10P)
         self.EL_LEVEL_VO_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VT_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl1P)
-        self.EL_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VO_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl01P)
+        self.EL_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VO_F,X=a+100,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl01P)
         self.EL_LEVEL_V001_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V01_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl001P)
         self.EL_LEVEL_V0001_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V001_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl0001P)
         self.EL_LEVEL_V00001_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V0001_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl00001P)
         self.EL_LEVEL_PLUS_B=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VT_F,X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
         b=100
-        #self.EL_LEVEL_VHM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_F,X=20,Y=240,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
-        self.EL_LEVEL_VTM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10M)
+        self.EL_LEVEL_VTM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_9,X=a+d,Y=320,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10M)
         self.EL_LEVEL_VOM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VTM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl1M)
-        self.EL_LEVEL_V01M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VOM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl01M)
+        self.EL_LEVEL_V01M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VOM_F,X=a+100,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl01M)
         self.EL_LEVEL_V001M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V01M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl001M)
         self.EL_LEVEL_V0001M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V001M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl0001M)
         self.EL_LEVEL_V00001M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V0001M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl00001M)
@@ -1031,6 +1168,24 @@ class ACU_GUI(customtkinter.CTk):
         '''
         self.COM_F.after(10,self.MonitorComPorts)
         
+    def setSlaveMode(self):
+        global IS_INDIVISUAL_MODE
+        global IS_SLAVE_MODE
+        IS_INDIVISUAL_MODE=False
+        IS_SLAVE_MODE=True
+        self.SLAVE_MODE_BUTTOM.setDefaultColor()
+        self.INDIV_MODE_BUTTOM.setColor(color="gray")
+
+    def setIndivMode(self):
+        global IS_INDIVISUAL_MODE
+        global IS_SLAVE_MODE
+        IS_INDIVISUAL_MODE=True
+        IS_SLAVE_MODE=False
+        self.INDIV_MODE_BUTTOM.setDefaultColor()
+        self.SLAVE_MODE_BUTTOM.setColor(color="gray")
+        
+        
+        
     BUTTON_UNENABLE_COLOR="gray"
     def ApperGUI(self):
         global DEFAULT_WINDOW_HEIGHT
@@ -1076,8 +1231,10 @@ class ACU_GUI(customtkinter.CTk):
         
         self.DisConect_B=CustomFlame(master=self,text="Conect",text_size=20,X=50,Y=50,sizeX=30,sizeY=6)
 
-        self.SLAVE_MODE_BUTTOM=CustomButton(master=self,text="SLAVE",X=40,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30)
-        self.INDIV_MODE_BUTTOM=CustomButton(master=self,text="INDIV",X=55,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30)
+        self.SLAVE_MODE_BUTTOM=CustomButton(master=self,text="SLAVE",X=40,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30,com=self.setSlaveMode)
+        self.INDIV_MODE_BUTTOM=CustomButton(master=self,text="INDIV",X=55,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30,com=self.setIndivMode)
+        self.setIndivMode()
+        
         self.LOCK_BUTTOM=CustomButton(master=self,text="LOCK",X=5,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30)
         self.OPTICAL_TRAKING_BUTTOM=CustomChekButton(master=self,text="OPTICAL TRAKING MODE",X=20,Y=13,sizeX=10,sizeY=5,text_size=15,texcolor="white")
         ACU=LCU_Controller(master=self)
