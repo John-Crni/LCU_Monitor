@@ -6,14 +6,28 @@ import time
 import struct
 import asyncio
 
+
+
 class ACUBackEnd():
     
     ACU_Monitor=None
     
     ASYNC_TEST=None
     
-    SelectedCOM=None
-    
+    SelectedCOM="none"
+
+    SELECTED_COM_STATS="none"
+
+    def getCOM_STATS(self):
+        re="unkowm"
+        if self.SelectedCOM=="none" and self.SELECTED_COM_STATS=="none":
+            re="notconect"
+        if self.SelectedCOM!="none" and self.SELECTED_COM_STATS=="conected":
+            re="conected"
+        if self.SelectedCOM!="none" and (self.SELECTED_COM_STATS=="none" or self.SELECTED_COM_STATS=="disconected"):
+            re="disconected"
+        return re
+
     def __init__(self):
         print("ACUBackEnd_ISBEGUN!")
         
@@ -113,6 +127,7 @@ class AsyncedClass():
         if self.sleepTime>0:
             time.sleep(float(self.sleepTime))
 
+        
 class Serialcommunicator():
     Serial=None
     RoopBackCom= [ 0xB6, 0x01, 0x02, 0x00 ]
@@ -200,7 +215,82 @@ class comMonitor(AsyncedClass):
         self.message=message
         self.master=ma
         super().__init__(acu)
+
+class serialComunicator(AsyncedClass):
+    none="none"
+    enable="enable"
+    conected="conected"
+    disconected="disconected"
+    notconect="notconect"
+    unkowm="unkowm"
+
+    selected_com=none
+    selected_com_stats=none
+    stats=disconected
+    
+
+    def set_Stats(self,stats,com):
+        if stats==self.notconect:
+            self.selected_com=self.none
+            self.selected_com_stats=self.none
+        if stats==self.disconected:
+            self.selected_com_stats=self.disconected
+            self.ACUmonitor.FrontEnd.LCU_Controller.Commad_Line.Insert(self.selected_com+"is"+stats)
+        if stats==self.conected:
+            self.selected_com=com
+            self.selected_com_stats=self.conected
+            self.ACUmonitor.FrontEnd.LCU_Controller.Commad_Line.Insert(self.selected_com+"is"+stats)
         
+    def get_STATS(self):
+        if self.selected_com==self.none and self.selected_com_stats==self.none:
+            return self.notconect
+        if self.selected_com!=self.none and self.selected_com_stats==self.conected:
+            return self.conected
+        if self.selected_com!=self.none and (self.selected_com_stats==self.none or self.selected_com_stats==self.disconected):
+            return self.disconected
+        
+    def StartSerial(self,PORT="COM4",baud_rate=9600,time_out=0.5,byte_size=serial.EIGHTBITS,stop_bits = serial.STOPBITS_ONE,PARITY=serial.PARITY_NONE):
+        try:
+            self.Serial=serial.Serial(port=PORT, baudrate=baud_rate, timeout=time_out,bytesize=byte_size,stopbits = stop_bits,parity=PARITY)
+            self.set_Stats(stats=self.conected,com=PORT)
+        except:
+            print("Serialcommunicator:"+"シリアルポートが開けませんでした:"+PORT)
+            self.set_Stats(stats=self.notconect)
+            pass
+
+    def setdisconnect(self):
+        self.Serial.close()
+        self.Serial=None
+
+    def Async(self):
+        stats=self.get_STATS()
+        if stats==self.notconect:
+            self.StartSerial()
+        if stats==self.conected:
+            try:
+                self.communicater()
+            except:
+                self.set_Stats(stats=self.disconected)
+                pass
+        if stats==self.disconected:
+            self.set_Stats(stats=self.notconect)
+            
+
+
+    def communicater(self):
+        print("ASYNC_COM_TEST")
+    
+    
+
+    
+
+    
+
+
+
+        
+        
+
 class SerialCommunicator2(AsyncedClass):
     T=0.1
     st="None"
@@ -326,3 +416,5 @@ class Async(threading.Thread):
                     print("同期するクラスに、Async()と名前付けされている関数がありません,もしくはそれ以外のエラーが起きています")
             if self.Func is not None and self.alive:
                 self.Func()
+
+

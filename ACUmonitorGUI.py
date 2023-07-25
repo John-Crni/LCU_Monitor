@@ -5,6 +5,9 @@ import threading
 import time as Timer
 import copy
 import math
+import os
+from PIL import Image
+
 
 FONT_TYPE = "Segoe UI"
 DEFAULT_WINDOW_WIDTH=1110
@@ -23,7 +26,11 @@ ELEVATION_MIN=0
 IS_SLAVE_MODE=False
 IS_INDIVISUAL_MODE=True
 
+IMAGE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images")
+
+
 class CustomBase(customtkinter.CTkFrame):
+    image=None
     posx=0
     posy=0
     sizex=0
@@ -56,7 +63,12 @@ class CustomBase(customtkinter.CTkFrame):
     def UPDATEGUI(self):
         i=0
         #self.directBody.configure(text=self.text)
-    def update_gui(self,text="none_text",text_size=1.1,X=1.1,Y=1.1,sizeX=1.1,sizeY=1.1):
+    def update_gui(self,image_name="none",text="none_text",text_size=1.1,X=1.1,Y=1.1,sizeX=1.1,sizeY=1.1):
+        if image_name!="none":
+            global IMAGE_PATH
+            self.image=self.home_image = customtkinter.CTkImage(light_image=Image.open(os.path.join(IMAGE_PATH, image_name)),
+                                                 dark_image=Image.open(os.path.join(IMAGE_PATH, image_name)), size=(20, 20))
+
         if text!="none_text":
             self.text=text
         if self.is_integer_num(text_size):
@@ -381,18 +393,22 @@ class CustomButton(CustomBase):
         self.directBody.configure(text=self.text)
     def setGUI(self):
         super(CustomButton,self).setGUI()
-        if self.com is not None:
+        if self.com is not None and self.image is not None:
+            self.directBody  = customtkinter.CTkButton(self,image=self.image,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,command=self.com,hover_color=self.hg,bg_color=self.bg)
+        elif self.com is not None:
             self.directBody  = customtkinter.CTkButton(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,command=self.com,hover_color=self.hg,bg_color=self.bg)
+        elif self.image is not None:
+            self.directBody  = customtkinter.CTkButton(self,image=self.image,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,hover_color=self.hg,bg_color=self.bg)
         else:
             self.directBody  = customtkinter.CTkButton(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,hover_color=self.hg,bg_color=self.bg)
         self.directBody.grid(row=0, column=0, padx=0,pady=0)
         self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
-    def __init__(self, master, text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,texcolor="black",fg="#3B8ED0",hg="red",bg="#3B8ED0",com=None,cornerradius=10):
+    def __init__(self, master,image_name="none", text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,texcolor="black",fg="#3B8ED0",hg="red",bg="#3B8ED0",com=None,cornerradius=10):
         if com is None:
             print("COOOOOOOOOOOM")
         super().__init__(master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
         self.selfUpdateValue(texcolor=texcolor,fg=fg,hg=hg,com=com,cornerradius=cornerradius,bg=bg)
-        self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
+        self.update_gui(text=text,image_name=image_name,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
 
 class CustomChekButton(CustomButton):
     def setGUI(self):
@@ -406,7 +422,7 @@ class CustomChekButton(CustomButton):
     def __init__(self, master, text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,texcolor="black",fg="#3B8ED0",hg="red",com=None,cornerradius=10):
         super().__init__(master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent,texcolor=texcolor,fg=fg,hg=hg,com=com,cornerradius=cornerradius)
 
-class CustomCombobox (customtkinter.CTkFrame):
+class CustomCombobox2 (customtkinter.CTkFrame):
     posx=0
     posy=0
     sizex=0
@@ -471,6 +487,32 @@ class CustomCombobox (customtkinter.CTkFrame):
         sw-=(w/2)
         sh-=(h/2)
         self.combbox.place(x=sw,y=sh)
+
+class CustomCombobox(CustomBase):
+    corner=-1
+    curb=10
+    tex_color=""
+    bg="#3B8ED0"
+    fg=""
+    value=["none"]
+    def setValue(self,value=["something"]):
+        self.value=value
+    def UPDATEGUI(self):
+        super(CustomCombobox,self).UPDATEGUI()
+        self.directBody.configure(values=self.value,fg_color=self.fg)
+    def setGUI(self):
+        super(CustomCombobox,self).setGUI()
+        self.directBody = customtkinter.CTkComboBox(self,font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.corner,fg_color=self.fg,values=self.value)
+        self.directBody.grid(row=0, column=0, padx=self.curb)
+        self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
+    def __init__(self, master, text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None,bg="gray15",fg="gray15",value=["None1"]):
+        super().__init__(master=master,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
+        self.corner=corner
+        self.curb=curb
+        self.bg=bg
+        self.fg=fg
+        self.value=value
+        self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
 
 class CustomCheckBox(customtkinter.CTkFrame):
     posx=0
@@ -928,7 +970,7 @@ class LCU_Controller(customtkinter.CTkFrame):
     def printS(self):
         print("HELLOW")
                 
-    
+
     def __init__(self, master):
         super().__init__(master)
         # add widgets onto the frame...
@@ -1080,10 +1122,9 @@ class ACU_GUI(customtkinter.CTk):
     eASYNC_LIST=[]
     CONECT_B=None
     DisConect_B=None
-    LOCK_BUTTOM=None
     SLAVE_MODE_BUTTOM=False
     INDIV_MODE_BUTTOM=True
-    OPTICAL_TRAKING_BUTTOM=None
+    UPDATE_COM_BUTTOM=None
     
     COM_LIST=[]
     SELECTED_COM="NONE"
@@ -1184,9 +1225,12 @@ class ACU_GUI(customtkinter.CTk):
         self.INDIV_MODE_BUTTOM.setDefaultColor()
         self.SLAVE_MODE_BUTTOM.setColor(color="gray")
         
-        
-        
     BUTTON_UNENABLE_COLOR="gray"
+
+    def updateComList(self):
+        self.COM_F.setValue(value=self.ACU_Monitor.BackEnd.getSerialPorts())
+        self.COM_F.update_gui()
+
     def ApperGUI(self):
         global DEFAULT_WINDOW_HEIGHT
         global DEFAULT_WINDOW_WIDTH
@@ -1220,12 +1264,10 @@ class ACU_GUI(customtkinter.CTk):
         #self.QUIET_BUTTON=CustomButton(master=self,text="EXIT",text_size=27,X=95,Y=4,sizeX=10,sizeY=5,com=self.quit1)
         #X=91,Y=12
         #Place_F = CustomFlame(master=self,text="あわらキャンパス",text_size=30,sizeX=10,sizeY=7,X=90,Y=14)
-        
         self.COM_STATS_F=CustomFlame(master=self,text="Unkown",X=80,Y=11,sizeX=16,sizeY=6,text_size=20)
         self.COM_F=CustomCombobox(master=self,value=self.ACU_Monitor.BackEnd.getSerialPorts(),X=81,Y=4,sizeX=18,sizeY=6,text_size=27)
-        self.COM_LIST=(copy.deepcopy(self.ACU_Monitor.BackEnd.getSerialPorts()))
+        self.UPDATE_COM_BUTTOM=CustomButton(parent=self.COM_F,master=self,image_name="kousin.png",text="",X=-10,Y=50,sizeX=2,sizeY=5,cornerradius=5,text_size=1,fg="gray50",bg=self.cget("fg_color"),com=self.updateComList)
         #self.SELECTED_COM=self.COM_F.combbox.get()
-        self.COM_F.after(10,self.MonitorComPorts)
         
         #self.CONECT_B=CustomFlame(master=self,text="Conect",text_size=20,X=50,Y=50,sizeX=30,sizeY=6)
         
@@ -1235,11 +1277,7 @@ class ACU_GUI(customtkinter.CTk):
         self.INDIV_MODE_BUTTOM=CustomButton(master=self,text="INDIV",X=55,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30,com=self.setIndivMode)
         self.setIndivMode()
         
-        self.LOCK_BUTTOM=CustomButton(master=self,text="LOCK",X=5,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30)
-        self.OPTICAL_TRAKING_BUTTOM=CustomChekButton(master=self,text="OPTICAL TRAKING MODE",X=20,Y=13,sizeX=10,sizeY=5,text_size=15,texcolor="white")
         ACU=LCU_Controller(master=self)
-    
-
         #self.COM_F.combbox.configure(command=self.ThrowSelectedCom2Backend)
         
         #textbox=CustomTextBox(master=self,text="FUCKYOU!",text_size=30,sizeX=30,sizeY=30)
@@ -1250,9 +1288,6 @@ class ACU_GUI(customtkinter.CTk):
         #self.COM_Monitor.start()
         
         self.enableAsync()
-        
-        
-    
         #button=CustomButton(master=self,text="HELLO!",text_size=30,X=50,Y=50,com=self.selected)
         
 

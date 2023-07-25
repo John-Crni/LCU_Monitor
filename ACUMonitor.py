@@ -10,7 +10,7 @@ ACUMONITOR=None
 class Start():
     def __init__(self):
         print("SATRT!")
-        global ACUMONITORy
+        global ACUMONITOR
         ACU=ACU_Monitor()
         ACUMONITOR=ACU
         BackEnd=ACUbackend.ACUBackEnd()
@@ -21,7 +21,7 @@ class Start():
         ACU.BackEnd.ACU_Monitor=ACU
         ACU.FrontEnd.ACU_Monitor=ACU
         print(ACU.FrontEnd.NAME)
-        ACU.setUpAsync2List(As=ACUbackend.comMonitor(acu=ACU,sleepT=0.5))
+        #ACU.setUpAsync2List(As=ACUbackend.comMonitor(acu=ACU,sleepT=0.5))
         #ACU.setUpAsync2List(As=ACUbackend.comMonitor(acu=ACU,tim=0.5,St="HELLOs"))
         StartGUI.ApperGUI()
         StartGUI.LoopGui()
