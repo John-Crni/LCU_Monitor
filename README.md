@@ -1,5 +1,5 @@
 # LCU_Monitor
-It's Used to AWARA 2.5m Antena
+It's Used to AWARA 10m Antena
 
 インストールしておくライブラリ
 tkinter
