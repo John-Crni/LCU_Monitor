@@ -233,6 +233,9 @@ class CustomTextBox2(CustomBase):
     corner=1
     curb=10
     num=0
+    def setReadonly(self):
+        print("")
+        #self.directBody.configure(state='disabled')
     def Insert(self,text):
         self.directBody.insert("0.0",str(self.num)+":"+text+"\n")
         self.num+=1
@@ -403,6 +406,12 @@ class CustomButton(CustomBase):
     pussingButtomMode=False
     changeColor="gray"
     ButtomStats=False #Falseが選択されていないとき、Trueが選択されていると
+    def setdisableColor(self):
+        super(CustomButton,self).setdisableColor()
+        self.directBody.configure(text_color="gray")
+    def setnormalColor(self):
+        super(CustomButton,self).setnormalColor()
+        self.directBody.configure(text_color=self.textcolor)
     def setTextColor(self,event):
         if self.pussingButtomMode is True and self.text!="none":
             self.ButtomStats=not (self.ButtomStats)
@@ -1013,6 +1022,7 @@ class LCU_Controller(customtkinter.CTkFrame):
         ACU_F.directBody.update()
         #ACU_F.label.update()
         self.Commad_Line=CustomTextBox2(master=ACU_F,text="None",text_size=20,X=90,Y=50,sizeX=30,sizeY=100)
+        self.Commad_Line.setReadonly()
         Azimuth_T= CustomText(master=ACU_F,text="Azmizu",text_size=20,X=16,Y=5,sizeX=10,sizeY=5)
         self.Az_Real_F=CustomText(master=ACU_F,parent=Azimuth_T,text="REAL:",text_size=30,X=-60,Y=180,sizeX=10,sizeY=5)
         self.Az_Real_V_F=CustomText(master=ACU_F,parent=self.Az_Real_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
@@ -1327,8 +1337,8 @@ class ACU_GUI(customtkinter.CTk):
         
         self.DisConect_B=CustomFlame(master=self,text="Conect",text_size=20,X=50,Y=50,sizeX=30,sizeY=6)
 
-        self.SLAVE_MODE_BUTTOM=CustomButton(master=self,text="SLAVE",X=40,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30,com=self.setSlaveMode)
-        self.INDIV_MODE_BUTTOM=CustomButton(master=self,text="INDIV",X=55,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30,com=self.setIndivMode)
+        self.SLAVE_MODE_BUTTOM=CustomButton(master=self,text="SLAVE",textcolor="DarkSlateGray2",X=40,Y=11,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setSlaveMode)
+        self.INDIV_MODE_BUTTOM=CustomButton(master=self,text="INDIV",textcolor="DarkSlateGray2",X=55,Y=11,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setIndivMode)
         self.setIndivMode()
         
         self.LCU=LCU_Controller(master=self)
