@@ -9,7 +9,7 @@ import os
 from PIL import Image
 
 
-FONT_TYPE = "Segoe UI"
+FONT_TYPE = "x14y24pxHeadUpDaisy"
 DEFAULT_WINDOW_WIDTH=1110
 DEFAULT_WINDOW_HEIGHT=700
 SELECTED_COM="NONE"
@@ -45,10 +45,26 @@ class CustomBase(customtkinter.CTkFrame):
     sizeX=20
     sizeY=20
     directBody=None
+    bd_width=0
+    bd_color="gray74"
+    fg_color="gray50"
+    bg_color="none"
+    textcolor="black"
+    disableColor="gray10"
+    def setdisableColor(self):
+        self.directBody.configure(fg_color=self.disableColor)
+        if self.bd_width>0:
+            self.directBody.configure(border_color=self.disableColor)
+    def setnormalColor(self):
+        self.directBody.configure(fg_color=self.fg_color)
+        if self.bd_width>0:
+            self.directBody.configure(border_color=self.bd_color)
     def setDisable(self):
         self.directBody.configure(state="disabled")
+        self.setdisableColor()
     def setNormal(self):
         self.directBody.configure(state="normal")
+        self.setnormalColor()
     def is_integer_num(self,n):
         if isinstance(n, int):
             return True
@@ -63,12 +79,11 @@ class CustomBase(customtkinter.CTkFrame):
     def UPDATEGUI(self):
         i=0
         #self.directBody.configure(text=self.text)
-    def update_gui(self,image_name="none",text="none_text",text_size=1.1,X=1.1,Y=1.1,sizeX=1.1,sizeY=1.1):
+    def update_gui(self,image_name="none",text="none_text",text_size=1.1,X=1.1,Y=1.1,sizeX=1.1,sizeY=1.1,bd_width=1.1,bd_color="none",fg="none",bg="none",textcolor="none"):
         if image_name!="none":
             global IMAGE_PATH
             self.image=self.home_image = customtkinter.CTkImage(light_image=Image.open(os.path.join(IMAGE_PATH, image_name)),
                                                  dark_image=Image.open(os.path.join(IMAGE_PATH, image_name)), size=(20, 20))
-
         if text!="none_text":
             self.text=text
         if self.is_integer_num(text_size):
@@ -81,15 +96,32 @@ class CustomBase(customtkinter.CTkFrame):
             self.sizeX=sizeX
         if self.is_integer_num(sizeY):
             self.sizeY=sizeY
+        if self.is_integer_num(bd_width):
+            self.bd_width=bd_width
+        if bd_color!="none":
+            self.bd_color=bd_color
+        if fg!="none":
+            self.fg_color=fg
+        if bg!="none":
+            self.bg_color=bg
+        if textcolor!="none":
+            self.textcolor=textcolor
+        if self.bd_color=="none":
+            self.bd_color=self.bg
+            self.bd_width=0
         self.update()
         mas_win_width=self.master.winfo_reqwidth()
         mas_win_height=self.master.winfo_reqheight()
         if isinstance(self.master,CustomBase):
             mas_win_width=self.master.sizex
             mas_win_height=self.master.sizey
+            if self.bg_color=="none":
+                self.bg_color=self.master.bg_color
         if self.master.master is None:
             mas_win_width=DEFAULT_WINDOW_WIDTH
             mas_win_height=DEFAULT_WINDOW_HEIGHT
+            if self.bg_color=="none":
+                self.bg_color=self.master.cget("fg_color")
         scw = mas_win_width*self.X/100
         sch = mas_win_height*self.Y/100
         sw = mas_win_width*self.sizeX/100
@@ -128,25 +160,25 @@ class CustomBase(customtkinter.CTkFrame):
 
 class CustomRadioButtom(CustomBase):
     selfNum=0
-    texcolor="white"
+    textcolor="white"
     fg="#3B8ED0"
     hg="red"
-    def selfUpdateValue(self,texcolor="white",fg="#3B8ED0",hg="red",com=None,cornerradius=10):
-        if texcolor!="none":
-            self.texcolor=texcolor
+    def selfUpdateValue(self,textcolor="white",fg="#3B8ED0",hg="red",com=None,cornerradius=10):
+        if textcolor!="none":
+            self.textcolor=textcolor
         self.fg=fg
         self.hg=hg
     def setGUI(self):
         super(CustomRadioButtom,self).setGUI()
-        self.directBody  = customtkinter.CTkRadioButton(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,text_color=self.texcolor,fg_color=self.fg,hover_color=self.hg,bg_color=self.master.cget("fg_color"))
+        self.directBody  = customtkinter.CTkRadioButton(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,text_color=self.textcolor,fg_color=self.fg,hover_color=self.hg,bg_color=self.master.cget("fg_color"))
         self.directBody.grid(row=0, column=0, padx=0)
         self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
-    def __init__(self, master, text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,texcolor="white",fg="#3B8ED0",hg="red"):
+    def __init__(self, master, text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,textcolor="white",fg="#3B8ED0",hg="red"):
         super().__init__(master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
         global RADIO_BUTTOM_NUM
         RADIO_BUTTOM_NUM+=1
         self.selfNum=RADIO_BUTTOM_NUM
-        self.selfUpdateValue(texcolor=texcolor,fg=fg,hg=hg)
+        self.selfUpdateValue(textcolor=textcolor,fg=fg,hg=hg)
         self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
 
 class CustomScaler(customtkinter.CTkFrame):
@@ -161,7 +193,7 @@ class CustomScaler(customtkinter.CTkFrame):
         X=self.sizex*X
         Y=self.sizey*Y
         return (self.posx+X),(self.posy+Y)
-    def __init__(self, master,text_size=30,sizeX=13,sizeY=5,X=50,Y=50,texcolor="white",bg="red",fg="#3B8ED0",cornerradius=10,com=None,first_value=0,end_value=100,parent=None):
+    def __init__(self, master,text_size=30,sizeX=13,sizeY=5,X=50,Y=50,textcolor="white",bg="red",fg="#3B8ED0",cornerradius=10,com=None,first_value=0,end_value=100,parent=None):
         super().__init__(master)
         # add widgets onto the frame...
         self.update()
@@ -202,7 +234,7 @@ class CustomTextBox2(CustomBase):
     curb=10
     num=0
     def Insert(self,text):
-        self.directBody.insert("0.0",str(self.num)+":"+text)
+        self.directBody.insert("0.0",str(self.num)+":"+text+"\n")
         self.num+=1
     def setGUI(self):
         super(CustomTextBox2,self).setGUI()
@@ -365,26 +397,33 @@ class TEXT(customtkinter.CTkFrame):
         '''
 
 class CustomButton(CustomBase):
-    texcolor="black"
-    fg="#3B8ED0"
     hg="red"
-    bg="#3B8ED0"
     com=None
     cornerradius=10
+    pussingButtomMode=False
+    changeColor="gray"
+    ButtomStats=False #Falseが選択されていないとき、Trueが選択されていると
+    def setTextColor(self,event):
+        if self.pussingButtomMode is True and self.text!="none":
+            self.ButtomStats=not (self.ButtomStats)
+            if self.ButtomStats is True:
+                self.directBody.configure(hover_color=self.fg_color)
+                self.directBody.configure(text_color=self.fg_color)
+                self.directBody.configure(fg_color=self.hg)
+            if self.ButtomStats is False:
+                self.directBody.configure(hover_color=self.hg)
+                self.directBody.configure(text_color=self.textcolor)
+                self.directBody.configure(fg_color=self.fg_color)
     def setDefaultColor(self):
         self.directBody.configure(fg_color="#3B8ED0")
         self.fg="#3B8ED0"
     def setColor(self,color="red"):
         self.directBody.configure(fg_color=color)
-        self.fg=color
-    def selfUpdateValue(self,texcolor="white",fg="#3B8ED0",hg="red",com=None,cornerradius=10,bg="#3B8ED0"):
-        if texcolor!="none":
-            self.texcolor=texcolor
-        self.fg=fg
+    def selfUpdateValue(self,textcolor="white",fg="#3B8ED0",hg="red",com=None,cornerradius=10,bg="#3B8ED0"):
+        if textcolor!="none":
+            self.textcolor=textcolor
         self.hg=hg
-        self.bg=bg
         if com is not None:
-            print("COM!!!!!!!!!!")
             self.com=com
         if self.is_integer_num(cornerradius):
             self.cornerradius=cornerradius
@@ -394,33 +433,36 @@ class CustomButton(CustomBase):
     def setGUI(self):
         super(CustomButton,self).setGUI()
         if self.com is not None and self.image is not None:
-            self.directBody  = customtkinter.CTkButton(self,image=self.image,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,command=self.com,hover_color=self.hg,bg_color=self.bg)
+            self.directBody  = customtkinter.CTkButton(self,border_width=self.bd_width,hover_color=self.hg,border_color=self.bd_color,image=self.image,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.textcolor,fg_color=self.fg_color,command=self.com,bg_color=self.bg_color)
         elif self.com is not None:
-            self.directBody  = customtkinter.CTkButton(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,command=self.com,hover_color=self.hg,bg_color=self.bg)
+            self.directBody  = customtkinter.CTkButton(self,border_width=self.bd_width,hover_color=self.hg,border_color=self.bd_color,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.textcolor,fg_color=self.fg_color,command=self.com,bg_color=self.bg_color)
         elif self.image is not None:
-            self.directBody  = customtkinter.CTkButton(self,image=self.image,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,hover_color=self.hg,bg_color=self.bg)
+            self.directBody  = customtkinter.CTkButton(self,border_width=self.bd_width,hover_color=self.hg,border_color=self.bd_color,image=self.image,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.textcolor,fg_color=self.fg_color,bg_color=self.bg_color)
         else:
-            self.directBody  = customtkinter.CTkButton(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,hover_color=self.hg,bg_color=self.bg)
+            self.directBody  = customtkinter.CTkButton(self,border_width=self.bd_width,hover_color=self.hg,border_color=self.bd_color,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.textcolor,fg_color=self.fg_color,bg_color=self.bg_color)
         self.directBody.grid(row=0, column=0, padx=0,pady=0)
         self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
-    def __init__(self, master,image_name="none", text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,texcolor="black",fg="#3B8ED0",hg="red",bg="#3B8ED0",com=None,cornerradius=10):
-        if com is None:
-            print("COOOOOOOOOOOM")
+        if self.pussingButtomMode is True:
+            self.directBody.bind("<Button-1>",self.setTextColor)
+            self.directBody.bind("<Enter>",self.setTextColor)
+            self.directBody.bind("<Leave>",self.setTextColor)
+    def __init__(self,master,changedtextcolor="gray",pussingButtomMode=False,image_name="none", text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,textcolor="black",fg="gray50",hg="gray74",bg="none",com=None,cornerradius=10,bd_width=0,bd_color="none"):
         super().__init__(master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
-        self.selfUpdateValue(texcolor=texcolor,fg=fg,hg=hg,com=com,cornerradius=cornerradius,bg=bg)
-        self.update_gui(text=text,image_name=image_name,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
+        self.pussingButtomMode=pussingButtomMode
+        self.selfUpdateValue(textcolor=textcolor,fg=fg,hg=hg,com=com,cornerradius=cornerradius,bg=bg)
+        self.update_gui(text=text,image_name=image_name,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,bd_color=bd_color,bd_width=bd_width,bg=bg,fg=fg,textcolor=textcolor)
 
 class CustomChekButton(CustomButton):
     def setGUI(self):
         super(CustomChekButton,self).setGUI()
         if self.com is not None:
-            self.directBody  = customtkinter.CTkCheckBox(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,command=self.com,hover_color=self.hg,bg_color=self.master.cget("fg_color"))
+            self.directBody  = customtkinter.CTkCheckBox(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.textcolor,fg_color=self.fg_color,command=self.com,hover_color=self.hg,bg_color=self.bg_color)
         else:
-            self.directBody  = customtkinter.CTkCheckBox(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.texcolor,fg_color=self.fg,hover_color=self.hg,bg_color=self.master.cget("fg_color"))
+            self.directBody  = customtkinter.CTkCheckBox(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.textcolor,fg_color=self.fg_color,hover_color=self.hg,bg_color=self.bg_color)
         self.directBody.grid(row=0, column=0, padx=0)
         self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
-    def __init__(self, master, text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,texcolor="black",fg="#3B8ED0",hg="red",com=None,cornerradius=10):
-        super().__init__(master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent,texcolor=texcolor,fg=fg,hg=hg,com=com,cornerradius=cornerradius)
+    def __init__(self, master, text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,textcolor="black",fg="#3B8ED0",hg="red",com=None,cornerradius=10):
+        super().__init__(master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent,textcolor=textcolor,fg=fg,hg=hg,com=com,cornerradius=cornerradius)
 
 class CustomCombobox2 (customtkinter.CTkFrame):
     posx=0
@@ -448,7 +490,7 @@ class CustomCombobox2 (customtkinter.CTkFrame):
             self.setDisconected()
         else:
             self.combbox.configure(values=value,fg_color="#3B8ED0")
-    def __init__(self, master,text_size=30,sizeX=13,sizeY=5,X=50,Y=50,texcolor="white",fg="#3B8ED0",cornerradius=10,value=["None1","None2","None3","None4"],com=None,parent=None):
+    def __init__(self, master,text_size=30,sizeX=13,sizeY=5,X=50,Y=50,textcolor="white",fg="#3B8ED0",cornerradius=10,value=["None1","None2","None3","None4"],com=None,parent=None):
         super().__init__(master)
         # add widgets onto the frame...
         self.update()
@@ -492,8 +534,6 @@ class CustomCombobox(CustomBase):
     corner=-1
     curb=10
     tex_color=""
-    bg="#3B8ED0"
-    fg=""
     value=["none"]
     def setValue(self,value=["something"]):
         self.value=value
@@ -502,17 +542,15 @@ class CustomCombobox(CustomBase):
         self.directBody.configure(values=self.value,fg_color=self.fg)
     def setGUI(self):
         super(CustomCombobox,self).setGUI()
-        self.directBody = customtkinter.CTkComboBox(self,font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.corner,fg_color=self.fg,values=self.value)
+        self.directBody = customtkinter.CTkComboBox(self,border_width=self.bd_width,border_color=self.bd_color,font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.corner,fg_color=self.fg_color,values=self.value)
         self.directBody.grid(row=0, column=0, padx=self.curb)
         self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
-    def __init__(self, master, text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None,bg="gray15",fg="gray15",value=["None1"]):
+    def __init__(self, master, text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None,bg="none",fg="gray50",value=["None1"],bd_width=0,bd_color="none"):
         super().__init__(master=master,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
         self.corner=corner
         self.curb=curb
-        self.bg=bg
-        self.fg=fg
         self.value=value
-        self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
+        self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,bd_color=bd_color,bd_width=bd_width,bg=bg,fg=fg)
 
 class CustomCheckBox(customtkinter.CTkFrame):
     posx=0
@@ -564,23 +602,19 @@ class CustomCheckBox(customtkinter.CTkFrame):
 class CustomFlame(CustomBase):
     corner=-1
     curb=10
-    bg="#3B8ED0"
-    fg=""
     def UPDATEGUI(self):
         super(CustomFlame,self).UPDATEGUI()
         self.directBody.configure(text=self.text)
     def setGUI(self):
         super(CustomFlame,self).setGUI()
-        self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,bg_color=self.bg,fg_color=self.fg)
+        self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,bg_color=self.bg_color,fg_color=self.fg_color)
         self.directBody.grid(row=0, column=0, padx=self.curb)
         self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
-    def __init__(self, master, text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None,bg="gray15",fg="gray15"):
+    def __init__(self, master, text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None,bg="none",fg="gray50",bd_width=0,bd_color="none"):
         super().__init__(master=master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
         self.corner=corner
         self.curb=curb
-        self.bg=bg
-        self.fg=fg
-        self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
+        self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,bd_color=bd_color,bd_width=bd_width,bg=bg,fg=fg)
         
 class CustomText(CustomBase):
     def getWorldpos(self,x=50,y=50):
@@ -1000,11 +1034,11 @@ class LCU_Controller(customtkinter.CTkFrame):
         
         self.Az_Limit_F=CustomText(master=ACU_F,parent=self.Az_STOW_F,X=50,Y=400,text="LIMIT:",text_size=25,sizeX=5,sizeY=3)
         self.Az_Limit_MNUS=CustomText(master=ACU_F,parent=self.Az_Limit_F,X=200,Y=50,text="-",text_size=25,sizeX=1,sizeY=1)
-        self.Az_Limit_Unko_MB1=CustomChekButton(master=ACU_F,parent=self.Az_Limit_MNUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,texcolor="white")
-        self.Az_Limit_Unko_MB2=CustomChekButton(master=ACU_F,parent=self.Az_Limit_Unko_MB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        self.Az_Limit_Unko_MB1=CustomChekButton(master=ACU_F,parent=self.Az_Limit_MNUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,textcolor="white")
+        self.Az_Limit_Unko_MB2=CustomChekButton(master=ACU_F,parent=self.Az_Limit_Unko_MB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,textcolor="white")
         self.Az_Limit_PLUS=CustomText(master=ACU_F,parent=self.Az_Limit_F,X=450,Y=50,text="+",text_size=25,sizeX=1,sizeY=1)
-        self.Az_Limit_Unko_PB1=CustomChekButton(master=ACU_F,parent=self.Az_Limit_PLUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,texcolor="white")
-        self.Az_Limit_Unko_PB2=CustomChekButton(master=ACU_F,parent=self.Az_Limit_Unko_PB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        self.Az_Limit_Unko_PB1=CustomChekButton(master=ACU_F,parent=self.Az_Limit_PLUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,textcolor="white")
+        self.Az_Limit_Unko_PB2=CustomChekButton(master=ACU_F,parent=self.Az_Limit_Unko_PB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,textcolor="white")
         
         self.Az_MODE_F=CustomText(master=ACU_F,parent=self.Az_Limit_F,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
         self.Az_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.Az_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2)
@@ -1066,11 +1100,11 @@ class LCU_Controller(customtkinter.CTkFrame):
         
         self.EL_Limit_F=CustomText(master=ACU_F,parent=self.EL_STOW_F,X=50,Y=400,text="LIMIT:",text_size=25,sizeX=5,sizeY=3)
         self.EL_Limit_MNUS=CustomText(master=ACU_F,parent=self.EL_Limit_F,X=200,Y=50,text="-",text_size=25,sizeX=1,sizeY=1)
-        self.EL_Limit_Unko_MB1=CustomChekButton(master=ACU_F,parent=self.EL_Limit_MNUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,texcolor="white")
-        self.EL_Limit_Unko_MB2=CustomChekButton(master=ACU_F,parent=self.EL_Limit_Unko_MB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        self.EL_Limit_Unko_MB1=CustomChekButton(master=ACU_F,parent=self.EL_Limit_MNUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,textcolor="white")
+        self.EL_Limit_Unko_MB2=CustomChekButton(master=ACU_F,parent=self.EL_Limit_Unko_MB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,textcolor="white")
         self.EL_Limit_PLUS=CustomText(master=ACU_F,parent=self.EL_Limit_F,X=450,Y=50,text="+",text_size=25,sizeX=1,sizeY=1)
-        self.EL_Limit_Unko_PB1=CustomChekButton(master=ACU_F,parent=self.EL_Limit_PLUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,texcolor="white")
-        self.EL_Limit_Unko_PB2=CustomChekButton(master=ACU_F,parent=self.EL_Limit_Unko_PB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,texcolor="white")
+        self.EL_Limit_Unko_PB1=CustomChekButton(master=ACU_F,parent=self.EL_Limit_PLUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,textcolor="white")
+        self.EL_Limit_Unko_PB2=CustomChekButton(master=ACU_F,parent=self.EL_Limit_Unko_PB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,textcolor="white")
         
         self.EL_MODE_F=CustomText(master=ACU_F,parent=self.EL_Limit_F,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
         self.EL_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.EL_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2)
@@ -1125,6 +1159,8 @@ class ACU_GUI(customtkinter.CTk):
     SLAVE_MODE_BUTTOM=False
     INDIV_MODE_BUTTOM=True
     UPDATE_COM_BUTTOM=None
+    CONECT_BUTTOM=None
+    DISCONECT_BUTTOM=None
     
     COM_LIST=[]
     SELECTED_COM="NONE"
@@ -1133,6 +1169,11 @@ class ACU_GUI(customtkinter.CTk):
     SLAVE_MODE=False
     INDIV_MODE=True
     AUTO_MODE=True
+    
+    CONECT_BUTTOM_STATS=False
+    DISCONECT_BUTTOM_STATS=False
+    
+    LCU=None
 
     def updateTimer(self):
         time.updateAllTime()
@@ -1142,13 +1183,13 @@ class ACU_GUI(customtkinter.CTk):
         self.LstTime_F.directBody.configure(text=time.LSTformat)
         self.YearTime_F.after(1000,self.updateTimer)
     def setYearTime(self,S):
-        return CustomFlame(master=S,text=time.Year_Time,text_size=30,sizeY=5,sizeX=10)
+        return CustomButtom(master=S,text=time.Year_Time,text_size=30,sizeY=5,sizeX=10,X=10,Y=10)
     def setJST(self,S):
-        return CustomFlame(master=S,text=time.JSTformat,text_size=30,sizeY=5,sizeX=10)
+        return CustomButtom(master=S,text=time.JSTformat,text_size=30,sizeY=5,sizeX=10)
     def setUCT(self,S):
-        return CustomFlame(master=S,text=time.UTCformat,text_size=30,sizeY=5,sizeX=10)
+        return CustomButtom(master=S,text=time.UTCformat,text_size=30,sizeY=5,sizeX=10)
     def setLST(self,S):
-        return CustomFlame(master=S,text=time.LSTformat,text_size=30,sizeY=5,sizeX=10)
+        return CustomButtom(master=S,text=time.LSTformat,text_size=30,sizeY=5,sizeX=10)
 
     def __init__(self,async_list=None,asynctest=None):
         super().__init__()
@@ -1214,16 +1255,22 @@ class ACU_GUI(customtkinter.CTk):
         global IS_SLAVE_MODE
         IS_INDIVISUAL_MODE=False
         IS_SLAVE_MODE=True
-        self.SLAVE_MODE_BUTTOM.setDefaultColor()
-        self.INDIV_MODE_BUTTOM.setColor(color="gray")
+        self.SLAVE_MODE_BUTTOM.setnormalColor()
+        self.INDIV_MODE_BUTTOM.setdisableColor()
 
     def setIndivMode(self):
         global IS_INDIVISUAL_MODE
         global IS_SLAVE_MODE
         IS_INDIVISUAL_MODE=True
         IS_SLAVE_MODE=False
-        self.INDIV_MODE_BUTTOM.setDefaultColor()
-        self.SLAVE_MODE_BUTTOM.setColor(color="gray")
+        self.INDIV_MODE_BUTTOM.setnormalColor()
+        self.SLAVE_MODE_BUTTOM.setdisableColor()
+        
+    def setConectStats(self):
+        self.CONECT_BUTTOM_STATS=True
+        
+    def setDIsconectStats(self):
+        self.DISCONECT_BUTTOM_STATS=True
         
     BUTTON_UNENABLE_COLOR="gray"
 
@@ -1247,26 +1294,33 @@ class ACU_GUI(customtkinter.CTk):
         
         self.protocol('WM_DELETE_WINDOW', self.quit1)
         
-        self.JstTime_F = self.setJST(self)
-        self.JstTime_F.place(x=165,y=0)#110
+        self.YearTime_F = CustomButton(master=self,text=time.Year_Time,text_size=30,sizeY=5,sizeX=10,X=5,Y=3,fg=self.cget("fg_color"),bd_width=2,bd_color="gray40",cornerradius=0)
+        self.YearTime_F.setDisable()
         
-        self.UctTime_F = self.setUCT(self)
-        self.UctTime_F.place(x=368,y=0)#245
+        self.JstTime_F = CustomButton(master=self,parent=self.YearTime_F,text=time.JSTformat,text_size=30,sizeY=5,sizeX=10,X=210,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="gray40",cornerradius=0)
+        self.JstTime_F.setDisable()
         
-        self.LstTime_F = self.setLST(self)
-        self.LstTime_F.place(x=583,y=0)
+        self.LstTime_F = CustomButton(master=self,parent=self.JstTime_F,text=time.LSTformat,text_size=30,sizeY=5,sizeX=10,X=250,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="gray40",cornerradius=0)
+        self.LstTime_F.setDisable()
         
-        self.YearTime_F = self.setYearTime(self)
-        self.YearTime_F.place(x=0,y=0)
-        self.YearTime_F.after(1000,self.updateTimer)
+        self.UctTime_F = CustomButton(master=self,parent=self.LstTime_F,text=time.UTCformat,text_size=30,sizeY=5,sizeX=10,X=250,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="gray40",cornerradius=0)
+        self.UctTime_F.setDisable()
+        
+        self.UctTime_F.after(1000,self.updateTimer)
+
+        
         
         #X=73,Y=5
         #self.QUIET_BUTTON=CustomButton(master=self,text="EXIT",text_size=27,X=95,Y=4,sizeX=10,sizeY=5,com=self.quit1)
         #X=91,Y=12
         #Place_F = CustomFlame(master=self,text="あわらキャンパス",text_size=30,sizeX=10,sizeY=7,X=90,Y=14)
-        self.COM_STATS_F=CustomFlame(master=self,text="Unkown",X=80,Y=11,sizeX=16,sizeY=6,text_size=20)
-        self.COM_F=CustomCombobox(master=self,value=self.ACU_Monitor.BackEnd.getSerialPorts(),X=81,Y=4,sizeX=18,sizeY=6,text_size=27)
-        self.UPDATE_COM_BUTTOM=CustomButton(parent=self.COM_F,master=self,image_name="kousin.png",text="",X=-10,Y=50,sizeX=2,sizeY=5,cornerradius=5,text_size=1,fg="gray50",bg=self.cget("fg_color"),com=self.updateComList)
+        #self.COM_STATS_F=CustomFlame(master=self,text="Unkown",X=80,Y=11,sizeX=16,sizeY=6,text_size=20)
+        bd="DarkSlateGray2"
+        self.COM_F=CustomCombobox(master=self,value=self.ACU_Monitor.BackEnd.getSerialPorts(),X=88,Y=3,sizeX=13,sizeY=6,text_size=27,fg=self.cget("fg_color"),bd_width=1,bd_color=bd)
+        self.UPDATE_COM_BUTTOM=CustomButton(parent=self.COM_F,master=self,image_name="kousin.png",text="",X=-10,Y=50,sizeX=2,sizeY=4,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.updateComList)
+        self.CONECT_BUTTOM=CustomButton(parent=self.COM_F,master=self,textcolor="DarkSlateGray2",text="CONECT",X=55,Y=155,sizeX=10,sizeY=5,cornerradius=0,text_size=20,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setConectStats)
+        self.DISCONECT_BUTTOM=CustomButton(parent=self.CONECT_BUTTOM,master=self,textcolor="DarkSlateGray2",text="DISCONECT",X=40,Y=180,sizeX=8,sizeY=5,cornerradius=0,text_size=20,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setDIsconectStats)
+        self.DISCONECT_BUTTOM.setDisable()
         #self.SELECTED_COM=self.COM_F.combbox.get()
         
         #self.CONECT_B=CustomFlame(master=self,text="Conect",text_size=20,X=50,Y=50,sizeX=30,sizeY=6)
@@ -1277,7 +1331,7 @@ class ACU_GUI(customtkinter.CTk):
         self.INDIV_MODE_BUTTOM=CustomButton(master=self,text="INDIV",X=55,Y=11,sizeX=10,sizeY=5,cornerradius=5,text_size=30,com=self.setIndivMode)
         self.setIndivMode()
         
-        ACU=LCU_Controller(master=self)
+        self.LCU=LCU_Controller(master=self)
         #self.COM_F.combbox.configure(command=self.ThrowSelectedCom2Backend)
         
         #textbox=CustomTextBox(master=self,text="FUCKYOU!",text_size=30,sizeX=30,sizeY=30)

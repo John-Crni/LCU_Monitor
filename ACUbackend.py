@@ -185,30 +185,8 @@ class Serialcommunicator():
         self.master.ACUmonitor.FrontEnd.COM_F.combbox.configure(fg_color="#3B8ED0")
 
 class comMonitor(AsyncedClass):
-    now_com=""
-    before_com=""
     def Async(self):
-        self.before_com=self.now_com
-        self.now_com=self.ACUmonitor.FrontEnd.COM_F.combbox.get()
-        if self.now_com is not "Disconected" and (self.now_com!=self.before_com or self.ACUmonitor.FrontEnd.SELECTED_COM_ENABLE is False):
-            try:
-                ser = serial.Serial(port=self.now_com, baudrate=9600, timeout=0.5,bytesize=serial.EIGHTBITS,stopbits = serial.STOPBITS_ONE,parity=serial.PARITY_NONE)
-                commands = [ 0xB6, 0x01, 0x02, 0x00 ]
-                for cmd in commands:
-                    data = struct.pack("B", cmd)
-                    print("tx: ", data)
-                    ser.write(data)
-                ser.flush()
-                rx = ser.readline()
-                print("rx: ", rx)
-                ser.close()
-                #self.ACUmonitor.FrontEnd.COM_STATS_F.label.configure(text=(self.now_com+" is Enable!"),bg_color="#3B8ED0")
-                self.ACUmonitor.FrontEnd.SELECTED_COM=self.now_com
-                #self.ACUmonitor.FrontEnd.COM_F.combbox.setDisable()
-            except(OSError, serial.SerialException):
-                print("SerialError!")
-                #self.ACUmonitor.FrontEnd.COM_STATS_F.label.configure(text=(self.now_com+" is Disable!"),bg_color="red")
-                pass
+        print("HELLO")
         self.sleep()
     def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
         self.sleepTime=sleepT
@@ -227,36 +205,58 @@ class serialComunicator(AsyncedClass):
     selected_com=none
     selected_com_stats=none
     stats=disconected
-    
 
+    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
+        self.sleepTime=sleepT
+        self.message=message
+        self.master=ma
+        super().__init__(acu)
+    
     def set_Stats(self,stats,com):
         if stats==self.notconect:
+            print("set notconect")
             self.selected_com=self.none
             self.selected_com_stats=self.none
-        if stats==self.disconected:
-            self.selected_com_stats=self.disconected
-            self.ACUmonitor.FrontEnd.LCU_Controller.Commad_Line.Insert(self.selected_com+"is"+stats)
+            self.ACUmonitor.FrontEnd.CONECT_BUTTOM_STATS=False
+            self.ACUmonitor.FrontEnd.DISCONECT_BUTTOM.setDisable()
+            self.ACUmonitor.FrontEnd.CONECT_BUTTOM.setNormal()
+        if stats is self.disconected:
+            print("set disconected")
+            #self.setdisconnect()
+            #self.selected_com_stats=self.disconected
+            #self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert(self.selected_com+"is"+stats)
+           #self.ACUmonitor.FrontEnd.CONECT_BUTTOM_STATS=False
+            #self.ACUmonitor.FrontEnd.DISCONECT_BUTTOM.setDisable()
+            #self.ACUmonitor.FrontEnd.CONECT_BUTTOM.setNormal()
         if stats==self.conected:
+            print("set conected")
             self.selected_com=com
             self.selected_com_stats=self.conected
-            self.ACUmonitor.FrontEnd.LCU_Controller.Commad_Line.Insert(self.selected_com+"is"+stats)
+            self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert(self.selected_com+"is"+stats)
+            self.ACUmonitor.FrontEnd.CONECT_BUTTOM_STATS=False
+            self.ACUmonitor.FrontEnd.DISCONECT_BUTTOM.setNormal()
+            self.ACUmonitor.FrontEnd.CONECT_BUTTOM.setDisable()
         
     def get_STATS(self):
-        if self.selected_com==self.none and self.selected_com_stats==self.none:
+        if self.selected_com==self.none and self.selected_com_stats==self.none and self.ACUmonitor.FrontEnd.CONECT_BUTTOM_STATS:
             return self.notconect
         if self.selected_com!=self.none and self.selected_com_stats==self.conected:
             return self.conected
         if self.selected_com!=self.none and (self.selected_com_stats==self.none or self.selected_com_stats==self.disconected):
             return self.disconected
+        return self.unkowm
         
     def StartSerial(self,PORT="COM4",baud_rate=9600,time_out=0.5,byte_size=serial.EIGHTBITS,stop_bits = serial.STOPBITS_ONE,PARITY=serial.PARITY_NONE):
         try:
             self.Serial=serial.Serial(port=PORT, baudrate=baud_rate, timeout=time_out,bytesize=byte_size,stopbits = stop_bits,parity=PARITY)
+            print("Serialcommunicator:"+"シリアルポートを開きました:"+PORT)
             self.set_Stats(stats=self.conected,com=PORT)
         except:
-            print("Serialcommunicator:"+"シリアルポートが開けませんでした:"+PORT)
+            self.ACUmonitor.FrontEnd.CONECT_BUTTOM_STATS=False
             self.set_Stats(stats=self.notconect)
-            pass
+            print("Serialcommunicator:"+"シリアルポートが開けませんでした:"+PORT)
+            #"pass
+
 
     def setdisconnect(self):
         self.Serial.close()
@@ -265,15 +265,26 @@ class serialComunicator(AsyncedClass):
     def Async(self):
         stats=self.get_STATS()
         if stats==self.notconect:
-            self.StartSerial()
+            self.StartSerial(PORT=self.ACUmonitor.FrontEnd.COM_F.directBody.get())
         if stats==self.conected:
             try:
                 self.communicater()
             except:
+                self.ACUmonitor.FrontEnd.CONECT_BUTTOM_STATS=False
                 self.set_Stats(stats=self.disconected)
                 pass
+        if self.ACUmonitor.FrontEnd.DISCONECT_BUTTOM_STATS:
+            self.ACUmonitor.FrontEnd.DISCONECT_BUTTOM_STATS=False
+            self.set_Stats(stats=self.disconected)
         if stats==self.disconected:
             self.set_Stats(stats=self.notconect)
+            
+        
+        self.sleep()
+        #stats=self.get_STATS()
+        """
+
+        """
             
 
 
