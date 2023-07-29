@@ -51,6 +51,7 @@ class CustomBase(customtkinter.CTkFrame):
     bg_color="none"
     textcolor="black"
     disableColor="gray10"
+    cornerradius=10
     def setdisableColor(self):
         self.directBody.configure(fg_color=self.disableColor)
         if self.bd_width>0:
@@ -616,13 +617,14 @@ class CustomFlame(CustomBase):
         self.directBody.configure(text=self.text)
     def setGUI(self):
         super(CustomFlame,self).setGUI()
-        self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,bg_color=self.bg_color,fg_color=self.fg_color)
+        self.directBody = customtkinter.CTkLabel(self,text=self.text,corner_radius=self.cornerradius, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,bg_color=self.bg_color,fg_color=self.fg_color)
         self.directBody.grid(row=0, column=0, padx=self.curb)
         self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
-    def __init__(self, master, text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None,bg="none",fg="gray50",bd_width=0,bd_color="none"):
+    def __init__(self, master,cornerradius=10 ,text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None,bg="none",fg="gray50",bd_width=0,bd_color="none"):
         super().__init__(master=master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
         self.corner=corner
         self.curb=curb
+        self.cornerradius=cornerradius
         self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,bd_color=bd_color,bd_width=bd_width,bg=bg,fg=fg)
         
 class CustomText(CustomBase):
@@ -1017,7 +1019,7 @@ class LCU_Controller(customtkinter.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
         # add widgets onto the frame...
-        ACU_F=CustomFlame(master=master,sizeX=90,sizeY=76,corner=5,text="",X=50,Y=58)
+        ACU_F=CustomFlame(master=master,sizeX=90,sizeY=76,corner=5,text="",X=50,Y=58,fg="#0D1015")
         ACU_F.update()
         ACU_F.directBody.update()
         #ACU_F.label.update()
@@ -1160,6 +1162,7 @@ class ACU_GUI(customtkinter.CTk):
     Scaler=None
     COM_Monitor=None
     COM_STATS_F=None
+    BACKFROUND_F=None
     QUIET_BUTTON=None
     TEST_ASYNC=None
     ASYNC_LIST=[]
@@ -1297,12 +1300,23 @@ class ACU_GUI(customtkinter.CTk):
         customtkinter.set_default_color_theme("dark-blue")  # Themes: blue (default), dark-blue, green
         time.updateAllTime()
         
+        
+        
         self.geometry(str(DEFAULT_WINDOW_WIDTH)+"x"+str(DEFAULT_WINDOW_HEIGHT))
         self.resizable(False,False)
         self.grid_rowconfigure(0, weight=1)  # configure grid system
         self.grid_columnconfigure(0, weight=1)
         
         self.protocol('WM_DELETE_WINDOW', self.quit1)
+        
+        global IMAGE_PATH
+        image=self.home_image = customtkinter.CTkImage(light_image=Image.open(os.path.join(IMAGE_PATH, "background.png")),
+                                                 dark_image=Image.open(os.path.join(IMAGE_PATH, "background.png")), size=(1000, 1000))
+        
+        
+        #bg.pack(fill="x")
+
+    
         
         self.YearTime_F = CustomButton(master=self,text=time.Year_Time,text_size=30,sizeY=5,sizeX=10,X=5,Y=3,fg=self.cget("fg_color"),bd_width=2,bd_color="gray40",cornerradius=0)
         self.YearTime_F.setDisable()
