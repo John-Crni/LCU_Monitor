@@ -26,6 +26,10 @@ ELEVATION_MIN=0
 IS_SLAVE_MODE=False
 IS_INDIVISUAL_MODE=True
 
+STOW_IS_POS=False
+STOW_IS_REL=False
+STOW_IS_LOCK=True
+
 IMAGE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images")
 
 
@@ -117,7 +121,7 @@ class CustomBase(customtkinter.CTkFrame):
             mas_win_width=self.master.sizex
             mas_win_height=self.master.sizey
             if self.bg_color=="none":
-                self.bg_color=self.master.bg_color
+                self.bg_color=self.master.fg_color
         if self.master.master is None:
             mas_win_width=DEFAULT_WINDOW_WIDTH
             mas_win_height=DEFAULT_WINDOW_HEIGHT
@@ -640,7 +644,7 @@ class CustomText(CustomBase):
         self.directBody.configure(text=self.text)
     def setGUI(self):
         super(CustomText,self).setGUI()
-        self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,bg_color=self.master.directBody.cget("bg_color"),fg_color=self.master.directBody.cget("fg_color"))
+        self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,bg_color=self.bg_color,fg_color=self.bg_color)
         self.directBody.grid(row=0, column=0, padx=0)
         #self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
     def __init__(self, master, text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None):
@@ -1019,7 +1023,7 @@ class LCU_Controller(customtkinter.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
         # add widgets onto the frame...
-        ACU_F=CustomFlame(master=master,sizeX=90,sizeY=76,corner=5,text="",X=50,Y=58,fg="#0D1015")
+        ACU_F=CustomFlame(master=master,sizeX=90,sizeY=76,corner=0,text="",X=50,Y=58,fg="#0D1015",cornerradius=0)
         ACU_F.update()
         ACU_F.directBody.update()
         #ACU_F.label.update()
@@ -1035,14 +1039,16 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.Az_RePr_V_F=CustomText(master=ACU_F,parent=self.Az_RePr_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
         
         self.Az_SPEED_FF=CustomText(master=ACU_F,parent=self.Az_RePr_F,X=28,Y=350,text="SPEED:",text_size=25,sizeX=5,sizeY=3)
-        self.Az_SPEED_S=CustomScaler(master=ACU_F,parent=self.Az_SPEED_FF,sizeX=20,sizeY=4,com=self.change_Az_Speed_F,X=400,Y=150,bg=ACU_F.directBody.cget("bg_color"))
+        self.Az_SPEED_S=CustomScaler(master=ACU_F,parent=self.Az_SPEED_FF,sizeX=20,sizeY=4,com=self.change_Az_Speed_F,X=430,Y=100)
         self.Az_SPEED_F=CustomText(master=ACU_F,parent=self.Az_SPEED_S,X=45,Y=-130,text="0",text_size=25,sizeX=5,sizeY=3)
         self.change_Az_Speed_F(self.Az_SPEED_S.scaler.get())
         
+        '''
         self.Az_STOW_F=CustomText(master=ACU_F,parent=self.Az_SPEED_FF,X=50,Y=400,text="STOW:",text_size=25,sizeX=5,sizeY=3)
         self.Az_STOW_POS_B=CustomButton(master=ACU_F,parent=self.Az_STOW_F,X=260,Y=40,text="POS",text_size=25,sizeX=6,sizeY=2)
         self.Az_STOW_LOCK_B=CustomButton(master=ACU_F,parent=self.Az_STOW_POS_B,X=200,Y=50,text="LOCK",text_size=25,sizeX=6,sizeY=2)
         self.Az_STOW_REL_B=CustomButton(master=ACU_F,parent=self.Az_STOW_LOCK_B,X=200,Y=50,text="REL",text_size=25,sizeX=6,sizeY=2)
+        
         
         self.Az_Limit_F=CustomText(master=ACU_F,parent=self.Az_STOW_F,X=50,Y=400,text="LIMIT:",text_size=25,sizeX=5,sizeY=3)
         self.Az_Limit_MNUS=CustomText(master=ACU_F,parent=self.Az_Limit_F,X=200,Y=50,text="-",text_size=25,sizeX=1,sizeY=1)
@@ -1051,8 +1057,9 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.Az_Limit_PLUS=CustomText(master=ACU_F,parent=self.Az_Limit_F,X=450,Y=50,text="+",text_size=25,sizeX=1,sizeY=1)
         self.Az_Limit_Unko_PB1=CustomChekButton(master=ACU_F,parent=self.Az_Limit_PLUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,textcolor="white")
         self.Az_Limit_Unko_PB2=CustomChekButton(master=ACU_F,parent=self.Az_Limit_Unko_PB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,textcolor="white")
-        
-        self.Az_MODE_F=CustomText(master=ACU_F,parent=self.Az_Limit_F,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
+        '''
+
+        self.Az_MODE_F=CustomText(master=ACU_F,parent=self.Az_SPEED_FF,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
         self.Az_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.Az_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2)
         self.Az_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.Az_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2)
         self.Az_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.Az_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2)
@@ -1104,11 +1111,13 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.EL_SPEED_S=CustomScaler(master=ACU_F,parent=self.EL_SPEED_FF,sizeX=20,sizeY=5,com=self.change_El_Speed_F,X=400,Y=150)
         self.EL_SPEED_F=CustomText(master=ACU_F,parent=self.EL_SPEED_S,X=45,Y=-130,text="0",text_size=25,sizeX=5,sizeY=3)
         self.change_El_Speed_F(self.EL_SPEED_S.scaler.get())
-        
+
+        '''
         self.EL_STOW_F=CustomText(master=ACU_F,parent=self.EL_SPEED_FF,X=50,Y=400,text="STOW:",text_size=25,sizeX=5,sizeY=3)
         self.EL_STOW_POS_B=CustomButton(master=ACU_F,parent=self.EL_STOW_F,X=260,Y=40,text="POS",text_size=25,sizeX=6,sizeY=2)
         self.EL_STOW_LOCK_B=CustomButton(master=ACU_F,parent=self.EL_STOW_POS_B,X=200,Y=50,text="LOCK",text_size=25,sizeX=6,sizeY=2)
         self.EL_STOW_REL_B=CustomButton(master=ACU_F,parent=self.EL_STOW_LOCK_B,X=200,Y=50,text="REL",text_size=25,sizeX=6,sizeY=2)
+        
         
         self.EL_Limit_F=CustomText(master=ACU_F,parent=self.EL_STOW_F,X=50,Y=400,text="LIMIT:",text_size=25,sizeX=5,sizeY=3)
         self.EL_Limit_MNUS=CustomText(master=ACU_F,parent=self.EL_Limit_F,X=200,Y=50,text="-",text_size=25,sizeX=1,sizeY=1)
@@ -1117,8 +1126,9 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.EL_Limit_PLUS=CustomText(master=ACU_F,parent=self.EL_Limit_F,X=450,Y=50,text="+",text_size=25,sizeX=1,sizeY=1)
         self.EL_Limit_Unko_PB1=CustomChekButton(master=ACU_F,parent=self.EL_Limit_PLUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,textcolor="white")
         self.EL_Limit_Unko_PB2=CustomChekButton(master=ACU_F,parent=self.EL_Limit_Unko_PB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,textcolor="white")
-        
-        self.EL_MODE_F=CustomText(master=ACU_F,parent=self.EL_Limit_F,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
+        '''
+
+        self.EL_MODE_F=CustomText(master=ACU_F,parent=self.EL_SPEED_FF,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
         self.EL_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.EL_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2)
         self.EL_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.EL_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2)
         self.EL_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.EL_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2)
@@ -1185,6 +1195,11 @@ class ACU_GUI(customtkinter.CTk):
     
     CONECT_BUTTOM_STATS=False
     DISCONECT_BUTTOM_STATS=False
+
+    STOW_F=None
+    STOW_POS_B=None
+    STOW_LOCK_B=None
+    STOW_REL_B=None
     
     LCU=None
 
@@ -1195,14 +1210,6 @@ class ACU_GUI(customtkinter.CTk):
         self.UctTime_F.directBody.configure(text=time.UTCformat)
         self.LstTime_F.directBody.configure(text=time.LSTformat)
         self.YearTime_F.after(1000,self.updateTimer)
-    def setYearTime(self,S):
-        return CustomButtom(master=S,text=time.Year_Time,text_size=30,sizeY=5,sizeX=10,X=10,Y=10)
-    def setJST(self,S):
-        return CustomButtom(master=S,text=time.JSTformat,text_size=30,sizeY=5,sizeX=10)
-    def setUCT(self,S):
-        return CustomButtom(master=S,text=time.UTCformat,text_size=30,sizeY=5,sizeX=10)
-    def setLST(self,S):
-        return CustomButtom(master=S,text=time.LSTformat,text_size=30,sizeY=5,sizeX=10)
 
     def __init__(self,async_list=None,asynctest=None):
         super().__init__()
@@ -1278,6 +1285,39 @@ class ACU_GUI(customtkinter.CTk):
         IS_SLAVE_MODE=False
         self.INDIV_MODE_BUTTOM.setnormalColor()
         self.SLAVE_MODE_BUTTOM.setdisableColor()
+
+    def setStowREL(self):
+        global STOW_IS_POS
+        global STOW_IS_LOCK
+        global STOW_IS_REL
+        STOW_IS_POS=False
+        STOW_IS_REL=True
+        STOW_IS_LOCK=False
+        self.STOW_POS_B.setdisableColor()
+        self.STOW_LOCK_B.setdisableColor()
+        self.STOW_REL_B.setnormalColor()
+
+    def setStowLOCK(self):
+        global STOW_IS_POS
+        global STOW_IS_LOCK
+        global STOW_IS_REL
+        STOW_IS_POS=False
+        STOW_IS_REL=False
+        STOW_IS_LOCK=True
+        self.STOW_POS_B.setdisableColor()
+        self.STOW_LOCK_B.setnormalColor()
+        self.STOW_REL_B.setdisableColor()
+
+    def setStowPos(self):
+        global STOW_IS_POS
+        global STOW_IS_LOCK
+        global STOW_IS_REL
+        STOW_IS_POS=True
+        STOW_IS_REL=False
+        STOW_IS_LOCK=False
+        self.STOW_POS_B.setnormalColor()
+        self.STOW_LOCK_B.setdisableColor()
+        self.STOW_REL_B.setdisableColor()
         
     def setConectStats(self):
         self.CONECT_BUTTOM_STATS=True
@@ -1309,12 +1349,6 @@ class ACU_GUI(customtkinter.CTk):
         
         self.protocol('WM_DELETE_WINDOW', self.quit1)
         
-        global IMAGE_PATH
-        image=self.home_image = customtkinter.CTkImage(light_image=Image.open(os.path.join(IMAGE_PATH, "background.png")),
-                                                 dark_image=Image.open(os.path.join(IMAGE_PATH, "background.png")), size=(1000, 1000))
-        
-        
-        #bg.pack(fill="x")
 
     
         
@@ -1351,10 +1385,16 @@ class ACU_GUI(customtkinter.CTk):
         
         self.DisConect_B=CustomFlame(master=self,text="Conect",text_size=20,X=50,Y=50,sizeX=30,sizeY=6)
 
-        self.SLAVE_MODE_BUTTOM=CustomButton(master=self,text="SLAVE",textcolor="DarkSlateGray2",X=40,Y=11,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setSlaveMode)
-        self.INDIV_MODE_BUTTOM=CustomButton(master=self,text="INDIV",textcolor="DarkSlateGray2",X=55,Y=11,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setIndivMode)
+        self.SLAVE_MODE_BUTTOM=CustomButton(master=self,text="SLAVE",textcolor="DarkSlateGray2",X=55,Y=11,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setSlaveMode)
+        self.INDIV_MODE_BUTTOM=CustomButton(master=self,text="INDIV",textcolor="DarkSlateGray2",X=70,Y=11,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setIndivMode)
         self.setIndivMode()
-        
+
+        self.STOW_F=CustomText(master=self,text="STOW:",text_size=20,X=5,Y=11,sizeX=30,sizeY=6)
+        self.STOW_POS_B=CustomButton(master=self,parent=self.STOW_F,text="POS",textcolor="DarkSlateGray2",X=80,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowPos)
+        self.STOW_LOCK_B=CustomButton(master=self,parent=self.STOW_POS_B,text="LOCK",textcolor="DarkSlateGray2",X=170,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowLOCK)
+        self.STOW_REL_B=CustomButton(master=self,parent=self.STOW_LOCK_B,text="REL",textcolor="DarkSlateGray2",X=170,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowREL)
+        self.setStowLOCK()
+
         self.LCU=LCU_Controller(master=self)
         #self.COM_F.combbox.configure(command=self.ThrowSelectedCom2Backend)
         
