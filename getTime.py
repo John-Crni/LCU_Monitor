@@ -44,10 +44,8 @@ def setJSTFormat(JST):
     
 def setUTCFormat(_now):
     global UTCformat
-    UTC = dateutil.parser.parse(
-        '{_now} TZ'.format(**locals()), 
-        tzinfos = {'TZ': dateutil.tz.gettz('UTC')},
-    )
+    UTC=datetime.datetime.now(datetime.timezone.utc)
+
     UTCformat="UTC:"+getTime(str(UTC))
     
 def setLSTFormat(datetime_):
