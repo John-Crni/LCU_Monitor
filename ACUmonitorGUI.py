@@ -15,10 +15,12 @@ DEFAULT_WINDOW_HEIGHT=700
 SELECTED_COM="NONE"
 RADIO_BUTTOM_NUM=0
 ANTTENA_AZMIZTH=3600000
+ANTTENA_AZMIZTH_PROG=3600000
 AZMIZTH_STR="3 6 0. 0 0 0 0"
 AZMIZTH_MAX=3600000
 AZMIZTH_MIN=0
 ANTENA_ELEVATION=900000
+ANTENA_ELEVATION_PROG=900000
 ELEVATION_STR="9 0. 0 0 0 0"
 ELEVATION_MAX=900000
 ELEVATION_MIN=0
@@ -29,6 +31,14 @@ IS_INDIVISUAL_MODE=True
 STOW_IS_POS=False
 STOW_IS_REL=False
 STOW_IS_LOCK=True
+
+AZ_IS_STBY=False
+AZ_IS_PROG=True
+AZ_IS_MAN=False
+
+EL_IS_STBY=False
+EL_IS_PROG=True
+EL_IS_MAN=False
 
 IMAGE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images")
 
@@ -56,10 +66,18 @@ class CustomBase(customtkinter.CTkFrame):
     textcolor="black"
     disableColor="gray10"
     cornerradius=10
+    def disable_child(self):
+        children = self.winfo_children()
+        for child in children:
+            if isinstance(child,CustomBase):
+                child.setDisable()
+    def enable_child(self):
+        children = self.winfo_children()
+        for child in children:
+            if isinstance(child,CustomBase):
+                child.setNormal()
     def setdisableColor(self):
         self.directBody.configure(fg_color=self.disableColor)
-        if self.bd_width>0:
-            self.directBody.configure(border_color=self.disableColor)
     def setnormalColor(self):
         self.directBody.configure(fg_color=self.fg_color)
         if self.bd_width>0:
@@ -67,9 +85,11 @@ class CustomBase(customtkinter.CTkFrame):
     def setDisable(self):
         self.directBody.configure(state="disabled")
         self.setdisableColor()
+        self.disable_child()
     def setNormal(self):
         self.directBody.configure(state="normal")
         self.setnormalColor()
+        self.enable_child()
     def is_integer_num(self,n):
         if isinstance(n, int):
             return True
@@ -192,16 +212,22 @@ class CustomScaler(customtkinter.CTkFrame):
     posy=0
     sizex=0
     sizey=0
+    st=0
+    goal=0
+    ScaleWidth=0
+
     def getWorldpos(self,x=50,y=50):
         X=x/100
         Y=y/100
         X=self.sizex*X
         Y=self.sizey*Y
         return (self.posx+X),(self.posy+Y)
-    def __init__(self, master,text_size=30,sizeX=13,sizeY=5,X=50,Y=50,textcolor="white",bg="red",fg="#3B8ED0",cornerradius=10,com=None,first_value=0,end_value=100,parent=None):
+    def __init__(self, master,text_size=30,sizeX=13,sizeY=5,X=50,Y=50,textcolor="white",bg="#0D1015",fg="#0D1015",cornerradius=10,com=None,first_value=0,end_value=100,parent=None):
         super().__init__(master)
         # add widgets onto the frame...
         self.update()
+        self.st=first_value
+        self.goal=end_value
         mas_win_width=master.winfo_reqwidth()
         mas_win_height=master.winfo_reqheight()
         mas_win_width=0
@@ -411,9 +437,16 @@ class CustomButton(CustomBase):
     pussingButtomMode=False
     changeColor="gray"
     ButtomStats=False #Falseが選択されていないとき、Trueが選択されていると
+    timermode=False
     def setdisableColor(self):
         super(CustomButton,self).setdisableColor()
-        self.directBody.configure(text_color="gray")
+        if self.timermode:
+            self.directBody.configure(text_color=self.textcolor)
+            print("GAY!")
+        else:
+            self.directBody.configure(text_color="gray")
+            if self.bd_width>0:
+                self.directBody.configure(border_color=self.disableColor)
     def setnormalColor(self):
         super(CustomButton,self).setnormalColor()
         self.directBody.configure(text_color=self.textcolor)
@@ -460,9 +493,10 @@ class CustomButton(CustomBase):
             self.directBody.bind("<Button-1>",self.setTextColor)
             self.directBody.bind("<Enter>",self.setTextColor)
             self.directBody.bind("<Leave>",self.setTextColor)
-    def __init__(self,master,changedtextcolor="gray",pussingButtomMode=False,image_name="none", text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,textcolor="black",fg="gray50",hg="gray74",bg="none",com=None,cornerradius=10,bd_width=0,bd_color="none"):
+    def __init__(self,master,Timermode=False,pussingButtomMode=False,image_name="none", text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,textcolor="black",fg="gray50",hg="gray74",bg="none",com=None,cornerradius=10,bd_width=0,bd_color="none"):
         super().__init__(master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
         self.pussingButtomMode=pussingButtomMode
+        self.timermode=Timermode
         self.selfUpdateValue(textcolor=textcolor,fg=fg,hg=hg,com=com,cornerradius=cornerradius,bg=bg)
         self.update_gui(text=text,image_name=image_name,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,bd_color=bd_color,bd_width=bd_width,bg=bg,fg=fg,textcolor=textcolor)
 
@@ -644,12 +678,14 @@ class CustomText(CustomBase):
         self.directBody.configure(text=self.text)
     def setGUI(self):
         super(CustomText,self).setGUI()
-        self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,bg_color=self.bg_color,fg_color=self.bg_color)
+        self.directBody = customtkinter.CTkLabel(self,text=self.text,text_color=self.textcolor, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,bg_color=self.bg_color,fg_color=self.bg_color)
         self.directBody.grid(row=0, column=0, padx=0)
         #self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
-    def __init__(self, master, text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None):
+    def __init__(self, master,textcolor="DarkSlateGray2", text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None):
         super().__init__(master, text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
-        self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY)
+        self.update_gui(text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,textcolor=textcolor)
+
+
 
 class LCU_Controller(customtkinter.CTkFrame):
     '''
@@ -760,6 +796,67 @@ class LCU_Controller(customtkinter.CTkFrame):
     EL_LEVEL_V00001M_F=None
     EL_LEVEL_PLUS_B=None
     EL_LEVEL_MNUS_B=None
+
+    Az_mode=None
+    El_mode=None
+
+    def getCutFloat(self,num=0):
+        return round(num, 1)
+
+    def updateAz_num(self,pnum=0,nnum=0,work_time=0,speed=0,mode="prog"):
+        global ANTTENA_AZMIZTH
+        global ANTTENA_AZMIZTH_PROG
+        if mode is "manu":
+            pnum=ANTTENA_AZMIZTH/10000
+        t=('{:1.05f}'.format(pnum))
+        print(t)
+        self.Az_Prog_V_F.update_gui(text=t)
+        t=('{:1.05f}'.format(nnum))
+        self.Az_Real_V_F.update_gui(text=t)
+        t2=('{:1.04f}'.format(pnum))
+        ANTTENA_AZMIZTH_PROG=float(t2)
+        
+        ANTTENA_AZMIZTH_PROG*=10000
+
+        self.Az_RePr_V_F.update_gui(text=('{:1.05f}'.format(pnum-nnum)))
+        Speed=speed/work_time
+        self.change_Az_Speed_F(str=str(round(Speed, 1)))
+        self.Az_SPEED_S.scaler.set(Speed)
+        if mode is "prog":
+            self.set_Az(AzV=ANTTENA_AZMIZTH_PROG)
+        if mode is "manu" and self.Az_mode is "prog":
+            self.set_Az(AzV=ANTTENA_AZMIZTH)
+        self.Az_mode=mode
+
+
+    def updateEl_num(self,pnum=0,nnum=0,work_time=0,speed=0,mode="prog"):
+        global ANTENA_ELEVATION
+        global ANTENA_ELEVATION_PROG
+        modeIsShanged=(mode!=self.El_mode)
+        if modeIsShanged and mode=="stby":
+            self.set_El(ElV=ANTENA_ELEVATION)
+        if mode is "manu" or mode is "stby":
+            pnum=ANTENA_ELEVATION/10000
+        t=('{:1.05f}'.format(pnum))
+        self.EL_Prog_V_F.update_gui(text=t)
+        t=('{:1.05f}'.format(nnum))
+        self.EL_Real_V_F.update_gui(text=t)
+        t2=('{:1.04f}'.format(pnum))
+        ANTENA_ELEVATION_PROG=float(t2)
+        ANTENA_ELEVATION_PROG*=10000
+        self.EL_RePr_V_F.update_gui(text=('{:1.05f}'.format(pnum-nnum)))
+        Speed=speed/work_time
+        
+        self.EL_SPEED_S.scaler.set(Speed)
+        self.change_El_Speed_F(str=str(round(Speed, 1)))
+        if mode is "prog":
+            self.set_El(ElV=ANTENA_ELEVATION_PROG)
+            print("")
+        if mode is "manu" and self.El_mode is "prog":
+            self.set_El(ElV=ANTENA_ELEVATION)
+            print("")
+        self.El_mode=mode
+        print("EL GUI")
     
     def change_Az_Speed_F(self,str):
         self.Az_SPEED_F.update_gui(text=str)
@@ -839,9 +936,11 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.Az_LEVEL_V_6.update_gui(text=IsTen)
         self.Az_LEVEL_V_0.update_gui(text=IsOne)
         self.Az_LEVEL_V_01.update_gui(text=Is01)
+        '''
         self.Az_LEVEL_V_001.update_gui(text=Is001)
         self.Az_LEVEL_V_0001.update_gui(text=Is0001)
         self.Az_LEVEL_V_00001.update_gui(text=Is00001)
+        '''
         
     def set_El(self,ElV=900000):
         global ELEVATION_STR
@@ -907,9 +1006,11 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.EL_LEVEL_V_9.update_gui(text=IsTen)
         self.EL_LEVEL_V_0.update_gui(text=IsOne)
         self.EL_LEVEL_V_01.update_gui(text=Is01)
+        '''
         self.EL_LEVEL_V_001.update_gui(text=Is001)
         self.EL_LEVEL_V_0001.update_gui(text=Is0001)
         self.EL_LEVEL_V_00001.update_gui(text=Is00001)
+        '''
         
     def changeAz100P(self):
         self.change_AzmizValue(rate=1000000)
@@ -997,7 +1098,7 @@ class LCU_Controller(customtkinter.CTkFrame):
 
 #---------------------------------------------
         
-    def change_AzmizValue(self,rate=1,sing="+"):
+    def change_AzmizValue(self,rate=1,sing="+",mode="prog"):
         global ANTTENA_AZMIZTH
         global AZMIZTH_STR
         if sing=="+" and (ANTTENA_AZMIZTH+rate)<=AZMIZTH_MAX:
@@ -1006,7 +1107,7 @@ class LCU_Controller(customtkinter.CTkFrame):
             ANTTENA_AZMIZTH-=rate
         self.set_Az(AzV=ANTTENA_AZMIZTH)
                
-    def change_ElevationValue(self,rate=1,sing="+"):
+    def change_ElevationValue(self,rate=1,sing="+",mode="prog"):
         global ANTENA_ELEVATION
         global ELEVATION_STR
         if sing=="+" and (ANTENA_ELEVATION+rate)<=ELEVATION_MAX:
@@ -1018,11 +1119,160 @@ class LCU_Controller(customtkinter.CTkFrame):
     
     def printS(self):
         print("HELLOW")
-                
+
+    def setEL_LEVEL(self,frag=True):
+        if frag:
+            self.EL_LEVEL_MNUS_B.setNormal()
+            self.EL_LEVEL_PLUS_B.setNormal()
+            self.EL_LEVEL_V01_F.setNormal()
+            self.EL_LEVEL_VTM_F.setNormal()
+            self.EL_LEVEL_V01M_F.setNormal()
+            self.EL_LEVEL_VO_F.setNormal()
+            self.EL_LEVEL_VOM_F.setNormal()
+            self.EL_LEVEL_VT_F.setNormal()
+        else:
+            self.EL_LEVEL_MNUS_B.setDisable()
+            self.EL_LEVEL_PLUS_B.setDisable()
+            self.EL_LEVEL_V01_F.setDisable()
+            self.EL_LEVEL_VTM_F.setDisable()
+            self.EL_LEVEL_V01M_F.setDisable()
+            self.EL_LEVEL_VO_F.setDisable()
+            self.EL_LEVEL_VOM_F.setDisable()
+            self.EL_LEVEL_VT_F.setDisable()
+
+    def setAZ_LEVEL(self,frag=True):
+        if frag:
+            self.Az_LEVEL_MNUS_B.setNormal()
+            self.Az_LEVEL_PLUS_B.setNormal()
+            self.Az_LEVEL_VH_F.setNormal()
+            self.Az_LEVEL_VTM_F.setNormal()
+            self.Az_LEVEL_VHM_F.setNormal()
+            self.Az_LEVEL_VO_F.setNormal()
+            self.Az_LEVEL_VOM_F.setNormal()
+            self.Az_LEVEL_VT_F.setNormal()
+            self.Az_LEVEL_V01_F.setNormal()
+            self.Az_LEVEL_V01M_F.setNormal()
+        else:
+            self.Az_LEVEL_MNUS_B.setDisable()
+            self.Az_LEVEL_PLUS_B.setDisable()
+            self.Az_LEVEL_VH_F.setDisable()
+            self.Az_LEVEL_VTM_F.setDisable()
+            self.Az_LEVEL_VHM_F.setDisable()
+            self.Az_LEVEL_VO_F.setDisable()
+            self.Az_LEVEL_VOM_F.setDisable()
+            self.Az_LEVEL_VT_F.setDisable()
+            self.Az_LEVEL_V01_F.setDisable()
+            self.Az_LEVEL_V01M_F.setDisable()
+
+    
+    def setAzProg(self):
+        global AZ_IS_MAN
+        global AZ_IS_STBY
+        global AZ_IS_PROG
+        global ANTTENA_AZMIZTH_PROG
+        AZ_IS_MAN=False
+        AZ_IS_STBY=False
+        AZ_IS_PROG=True
+        self.Az_MODE_PROG_B.setnormalColor()
+        self.Az_MODE_MANU_B.setdisableColor()
+        self.Az_MODE_STBY_B.setdisableColor()
+        self.setAZ_LEVEL(frag=False)
+        self.set_Az(AzV=ANTTENA_AZMIZTH_PROG)
+
+    def setAzMan(self):
+        global AZ_IS_MAN
+        global AZ_IS_STBY
+        global AZ_IS_PROG
+        global ANTTENA_AZMIZTH
+        AZ_IS_MAN=True
+        AZ_IS_STBY=False
+        AZ_IS_PROG=False
+        self.Az_MODE_PROG_B.setdisableColor()
+        self.Az_MODE_MANU_B.setnormalColor()
+        self.Az_MODE_STBY_B.setdisableColor()
+        self.setAZ_LEVEL(frag=True)
+        self.set_Az(AzV=ANTTENA_AZMIZTH)
+
+    def setAzStby(self):
+        global AZ_IS_MAN
+        global AZ_IS_STBY
+        global AZ_IS_PROG
+        global ANTTENA_AZMIZTH
+        AZ_IS_MAN=False
+        AZ_IS_STBY=True
+        AZ_IS_PROG=False
+        self.Az_MODE_PROG_B.setdisableColor()
+        self.Az_MODE_MANU_B.setdisableColor()
+        self.Az_MODE_STBY_B.setnormalColor()
+        self.setAZ_LEVEL(frag=True)
+        self.set_Az(AzV=ANTTENA_AZMIZTH)
+
+    def setELProg(self):
+        global EL_IS_MAN
+        global EL_IS_STBY
+        global EL_IS_PROG
+        global ANTENA_ELEVATION_PROG
+        EL_IS_MAN=False
+        EL_IS_STBY=False
+        EL_IS_PROG=True
+        self.EL_MODE_PROG_B.setnormalColor()
+        self.EL_MODE_MANU_B.setdisableColor()
+        self.EL_MODE_STBY_B.setdisableColor()
+        self.setEL_LEVEL(frag=False)
+        self.set_El(ElV=ANTENA_ELEVATION_PROG)
+
+    def setELMan(self):
+        global EL_IS_MAN
+        global EL_IS_STBY
+        global EL_IS_PROG
+        global ANTENA_ELEVATION
+        EL_IS_MAN=True
+        EL_IS_STBY=False
+        EL_IS_PROG=False
+        self.EL_MODE_PROG_B.setdisableColor()
+        self.EL_MODE_MANU_B.setnormalColor()
+        self.EL_MODE_STBY_B.setdisableColor()
+        self.setEL_LEVEL(frag=True)
+        self.set_El(AzV=ANTENA_ELEVATION)
+
+    def setELStby(self):
+        global EL_IS_MAN
+        global EL_IS_STBY
+        global EL_IS_PROG
+        global ANTENA_ELEVATION
+        EL_IS_MAN=False
+        EL_IS_STBY=True
+        EL_IS_PROG=False
+        self.EL_MODE_PROG_B.setdisableColor()
+        self.EL_MODE_MANU_B.setdisableColor()
+        self.EL_MODE_STBY_B.setnormalColor()
+        self.setEL_LEVEL(frag=True)
+        self.set_El(AzV=ANTENA_ELEVATION)
+
+    def setIndivMode(self):
+        self.Az_MODE_MANU_B.setDisable()
+        self.Az_MODE_PROG_B.setDisable()
+        self.Az_MODE_STBY_B.setDisable()
+        self.EL_MODE_MANU_B.setDisable()
+        self.EL_MODE_PROG_B.setDisable()
+        self.EL_MODE_STBY_B.setDisable()
+        
+
+    def setSlaveMode(self):
+        self.Az_MODE_MANU_B.setNormal()
+        self.Az_MODE_PROG_B.setNormal()
+        self.Az_MODE_STBY_B.setNormal()
+        self.EL_MODE_MANU_B.setNormal()
+        self.EL_MODE_PROG_B.setNormal()
+        self.EL_MODE_STBY_B.setNormal()
+
+        self.setAzProg()
+        self.setELProg()
 
     def __init__(self, master):
         super().__init__(master)
         # add widgets onto the frame...
+        bd="DarkSlateGray2"
         ACU_F=CustomFlame(master=master,sizeX=90,sizeY=76,corner=0,text="",X=50,Y=58,fg="#0D1015",cornerradius=0)
         ACU_F.update()
         ACU_F.directBody.update()
@@ -1039,30 +1289,14 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.Az_RePr_V_F=CustomText(master=ACU_F,parent=self.Az_RePr_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
         
         self.Az_SPEED_FF=CustomText(master=ACU_F,parent=self.Az_RePr_F,X=28,Y=350,text="SPEED:",text_size=25,sizeX=5,sizeY=3)
-        self.Az_SPEED_S=CustomScaler(master=ACU_F,parent=self.Az_SPEED_FF,sizeX=20,sizeY=4,com=self.change_Az_Speed_F,X=430,Y=100)
+        self.Az_SPEED_S=CustomScaler(master=ACU_F,parent=self.Az_SPEED_FF,sizeX=20,sizeY=4,com=self.change_Az_Speed_F,X=430,Y=100,first_value=-2,end_value=2)
         self.Az_SPEED_F=CustomText(master=ACU_F,parent=self.Az_SPEED_S,X=45,Y=-130,text="0",text_size=25,sizeX=5,sizeY=3)
         self.change_Az_Speed_F(self.Az_SPEED_S.scaler.get())
         
-        '''
-        self.Az_STOW_F=CustomText(master=ACU_F,parent=self.Az_SPEED_FF,X=50,Y=400,text="STOW:",text_size=25,sizeX=5,sizeY=3)
-        self.Az_STOW_POS_B=CustomButton(master=ACU_F,parent=self.Az_STOW_F,X=260,Y=40,text="POS",text_size=25,sizeX=6,sizeY=2)
-        self.Az_STOW_LOCK_B=CustomButton(master=ACU_F,parent=self.Az_STOW_POS_B,X=200,Y=50,text="LOCK",text_size=25,sizeX=6,sizeY=2)
-        self.Az_STOW_REL_B=CustomButton(master=ACU_F,parent=self.Az_STOW_LOCK_B,X=200,Y=50,text="REL",text_size=25,sizeX=6,sizeY=2)
-        
-        
-        self.Az_Limit_F=CustomText(master=ACU_F,parent=self.Az_STOW_F,X=50,Y=400,text="LIMIT:",text_size=25,sizeX=5,sizeY=3)
-        self.Az_Limit_MNUS=CustomText(master=ACU_F,parent=self.Az_Limit_F,X=200,Y=50,text="-",text_size=25,sizeX=1,sizeY=1)
-        self.Az_Limit_Unko_MB1=CustomChekButton(master=ACU_F,parent=self.Az_Limit_MNUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,textcolor="white")
-        self.Az_Limit_Unko_MB2=CustomChekButton(master=ACU_F,parent=self.Az_Limit_Unko_MB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,textcolor="white")
-        self.Az_Limit_PLUS=CustomText(master=ACU_F,parent=self.Az_Limit_F,X=450,Y=50,text="+",text_size=25,sizeX=1,sizeY=1)
-        self.Az_Limit_Unko_PB1=CustomChekButton(master=ACU_F,parent=self.Az_Limit_PLUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,textcolor="white")
-        self.Az_Limit_Unko_PB2=CustomChekButton(master=ACU_F,parent=self.Az_Limit_Unko_PB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,textcolor="white")
-        '''
-
         self.Az_MODE_F=CustomText(master=ACU_F,parent=self.Az_SPEED_FF,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
-        self.Az_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.Az_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2)
-        self.Az_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.Az_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2)
-        self.Az_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.Az_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2)
+        self.Az_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.Az_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setAzProg)
+        self.Az_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.Az_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setAzMan)
+        self.Az_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.Az_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setAzStby)
         
         diff=20
         self.Az_LEVEL_V_3=CustomText(master=ACU_F,parent=self.Az_MODE_F,X=300,Y=500,text="3",text_size=26,sizeX=1,sizeY=2)
@@ -1071,32 +1305,23 @@ class LCU_Controller(customtkinter.CTkFrame):
         commma=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_0,X=200,Y=50,text=".",text_size=26,sizeX=1,sizeY=2)
         self.Az_LEVEL_V_01=CustomText(master=ACU_F,parent=commma,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
         diff=40
-        self.Az_LEVEL_V_001=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_01,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
-        self.Az_LEVEL_V_0001=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_001,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
-        self.Az_LEVEL_V_00001=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_0001,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
         
         a=250
         diff=100
-        self.Az_LEVEL_VH_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V_3,X=20,Y=-90,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz100P)
-        self.Az_LEVEL_VT_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VH_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz10P)
-        self.Az_LEVEL_VO_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VT_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz1P)
-        self.Az_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VO_F,X=a+diff,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01P)
+        self.Az_LEVEL_VH_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V_3,X=20,Y=-150,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz100P,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.Az_LEVEL_VT_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VH_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz10P,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.Az_LEVEL_VO_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VT_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz1P,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.Az_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VO_F,X=a+diff,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01P,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         diff=0
-        self.Az_LEVEL_V001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V01_F,X=a+diff,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz001P)
-        self.Az_LEVEL_V0001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V001_F,X=a+diff,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz0001P)
-        self.Az_LEVEL_V00001_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V0001_F,X=a+diff,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz00001P)
-        self.Az_LEVEL_PLUS_B=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VH_F,X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
+        self.Az_LEVEL_PLUS_B=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VH_F,X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         b=100
         diff=100
-        self.Az_LEVEL_VHM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V_3,X=20,Y=320,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz100M)
-        self.Az_LEVEL_VTM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VHM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz10M)
-        self.Az_LEVEL_VOM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VTM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz1M)
-        self.Az_LEVEL_V01M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VOM_F,X=a+diff,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01M)
+        self.Az_LEVEL_VHM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V_3,X=20,Y=300,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz100M,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.Az_LEVEL_VTM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VHM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz10M,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.Az_LEVEL_VOM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VTM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz1M,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.Az_LEVEL_V01M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VOM_F,X=a+diff,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01M,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         diff=0
-        self.Az_LEVEL_V001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V01M_F,X=a+diff,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz001M)
-        self.Az_LEVEL_V0001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V001M_F,X=a+diff,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz0001M)
-        self.Az_LEVEL_V00001M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V0001M_F,X=a+diff,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz00001M)
-        self.Az_LEVEL_MNUS_B=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VHM_F,X=-1*a,Y=50,text="-",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
+        self.Az_LEVEL_MNUS_B=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VHM_F,X=-1*a,Y=50,text="-",text_size=10,sizeX=1,sizeY=1,cornerradius=0,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         #EL_VERSION---------------------------------------------------------------------------------------------------------------------------------------#
         Elevation_T= CustomText(master=ACU_F,text="Elevation",text_size=20,X=55,Y=5,sizeX=10,sizeY=5)
         self.EL_Real_F=CustomText(master=ACU_F,parent=Elevation_T,text="REAL:",text_size=30,X=-60,Y=180,sizeX=10,sizeY=5)
@@ -1108,58 +1333,35 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.EL_RePr_V_F=CustomText(master=ACU_F,parent=self.EL_RePr_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
         
         self.EL_SPEED_FF=CustomText(master=ACU_F,parent=self.EL_RePr_F,X=28,Y=350,text="SPEED:",text_size=25,sizeX=5,sizeY=3)
-        self.EL_SPEED_S=CustomScaler(master=ACU_F,parent=self.EL_SPEED_FF,sizeX=20,sizeY=5,com=self.change_El_Speed_F,X=400,Y=150)
+        self.EL_SPEED_S=CustomScaler(master=ACU_F,parent=self.EL_SPEED_FF,sizeX=20,sizeY=4,com=self.change_El_Speed_F,X=430,Y=100,first_value=-2,end_value=2)
         self.EL_SPEED_F=CustomText(master=ACU_F,parent=self.EL_SPEED_S,X=45,Y=-130,text="0",text_size=25,sizeX=5,sizeY=3)
         self.change_El_Speed_F(self.EL_SPEED_S.scaler.get())
 
-        '''
-        self.EL_STOW_F=CustomText(master=ACU_F,parent=self.EL_SPEED_FF,X=50,Y=400,text="STOW:",text_size=25,sizeX=5,sizeY=3)
-        self.EL_STOW_POS_B=CustomButton(master=ACU_F,parent=self.EL_STOW_F,X=260,Y=40,text="POS",text_size=25,sizeX=6,sizeY=2)
-        self.EL_STOW_LOCK_B=CustomButton(master=ACU_F,parent=self.EL_STOW_POS_B,X=200,Y=50,text="LOCK",text_size=25,sizeX=6,sizeY=2)
-        self.EL_STOW_REL_B=CustomButton(master=ACU_F,parent=self.EL_STOW_LOCK_B,X=200,Y=50,text="REL",text_size=25,sizeX=6,sizeY=2)
-        
-        
-        self.EL_Limit_F=CustomText(master=ACU_F,parent=self.EL_STOW_F,X=50,Y=400,text="LIMIT:",text_size=25,sizeX=5,sizeY=3)
-        self.EL_Limit_MNUS=CustomText(master=ACU_F,parent=self.EL_Limit_F,X=200,Y=50,text="-",text_size=25,sizeX=1,sizeY=1)
-        self.EL_Limit_Unko_MB1=CustomChekButton(master=ACU_F,parent=self.EL_Limit_MNUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,textcolor="white")
-        self.EL_Limit_Unko_MB2=CustomChekButton(master=ACU_F,parent=self.EL_Limit_Unko_MB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,textcolor="white")
-        self.EL_Limit_PLUS=CustomText(master=ACU_F,parent=self.EL_Limit_F,X=450,Y=50,text="+",text_size=25,sizeX=1,sizeY=1)
-        self.EL_Limit_Unko_PB1=CustomChekButton(master=ACU_F,parent=self.EL_Limit_PLUS,text="",X=500,Y=300,sizeX=1,sizeY=5,text_size=1,textcolor="white")
-        self.EL_Limit_Unko_PB2=CustomChekButton(master=ACU_F,parent=self.EL_Limit_Unko_PB1,text="",X=400,Y=50,sizeX=1,sizeY=5,text_size=1,textcolor="white")
-        '''
-
         self.EL_MODE_F=CustomText(master=ACU_F,parent=self.EL_SPEED_FF,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
-        self.EL_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.EL_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2)
-        self.EL_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.EL_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2)
-        self.EL_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.EL_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2)
+        self.EL_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.EL_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setELProg)
+        self.EL_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.EL_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setELMan)
+        self.EL_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.EL_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setELStby)
         
+
         diff=20
         self.EL_LEVEL_V_9=CustomText(master=ACU_F,parent=self.EL_MODE_F,X=300,Y=500,text="9",text_size=26,sizeX=1,sizeY=2)
         self.EL_LEVEL_V_0=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_9,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
         commma=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_0,X=200,Y=50,text=".",text_size=26,sizeX=1,sizeY=2)
         self.EL_LEVEL_V_01=CustomText(master=ACU_F,parent=commma,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
         diff=40
-        self.EL_LEVEL_V_001=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_01,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
-        self.EL_LEVEL_V_0001=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_001,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
-        self.EL_LEVEL_V_00001=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_0001,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
         a=250
         d=-200
-        self.EL_LEVEL_VT_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_9,X=a+d,Y=-90,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10P)
-        self.EL_LEVEL_VO_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VT_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl1P)
-        self.EL_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VO_F,X=a+100,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl01P)
-        self.EL_LEVEL_V001_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V01_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl001P)
-        self.EL_LEVEL_V0001_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V001_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl0001P)
-        self.EL_LEVEL_V00001_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V0001_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl00001P)
-        self.EL_LEVEL_PLUS_B=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VT_F,X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
+        self.EL_LEVEL_VT_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_9,textcolor="DarkSlateGray2",X=a+d,Y=-150,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10P,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.EL_LEVEL_VO_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VT_F,textcolor="DarkSlateGray2",X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl1P,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.EL_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VO_F,textcolor="DarkSlateGray2",X=a+100,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl01P,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.EL_LEVEL_PLUS_B=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VT_F,textcolor="DarkSlateGray2",X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         b=100
-        self.EL_LEVEL_VTM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_9,X=a+d,Y=320,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10M)
-        self.EL_LEVEL_VOM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VTM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl1M)
-        self.EL_LEVEL_V01M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VOM_F,X=a+100,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl01M)
-        self.EL_LEVEL_V001M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V01M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl001M)
-        self.EL_LEVEL_V0001M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V001M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl0001M)
-        self.EL_LEVEL_V00001M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V0001M_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl00001M)
-        self.EL_LEVEL_MNUS_B=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VTM_F,X=-1*a,Y=50,text="-",text_size=10,sizeX=1,sizeY=1,cornerradius=0)
-
+        self.EL_LEVEL_VTM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_9,textcolor="DarkSlateGray2",X=a+d,Y=300,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10M,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.EL_LEVEL_VOM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VTM_F,textcolor="DarkSlateGray2",X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl1M,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.EL_LEVEL_V01M_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VOM_F,textcolor="DarkSlateGray2",X=a+100,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl01M,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)        
+        self.EL_LEVEL_MNUS_B=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VTM_F,textcolor="DarkSlateGray2",X=-1*a,Y=50,text="-",text_size=10,sizeX=1,sizeY=1,cornerradius=0,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.setAzProg()
+        self.setELProg()
 
 class ACU_GUI(customtkinter.CTk):
     ACU_Monitor=None
@@ -1203,12 +1405,37 @@ class ACU_GUI(customtkinter.CTk):
     
     LCU=None
 
+    def getMode(self):
+        global IS_INDIVISUAL_MODE
+        global IS_SLAVE_MODE
+        return IS_INDIVISUAL_MODE,IS_SLAVE_MODE
+
+    def getAzmode(self):
+        global AZ_IS_STBY
+        global AZ_IS_PROG
+        global AZ_IS_MAN
+        return AZ_IS_STBY,AZ_IS_PROG,AZ_IS_MAN
+    
+    def getElmode(self):
+        global EL_IS_STBY
+        global EL_IS_PROG
+        global EL_IS_MAN
+        return EL_IS_STBY,EL_IS_PROG,EL_IS_MAN
+    
+    def getAzManualRot(self):
+        global ANTTENA_AZMIZTH
+        return ANTTENA_AZMIZTH
+    
+    def getElManualRot(self):
+        global ANTENA_ELEVATION
+        return ANTENA_ELEVATION
+
     def updateTimer(self):
         time.updateAllTime()
-        self.YearTime_F.directBody.configure(text=time.Year_Time)
-        self.JstTime_F.directBody.configure(text=time.JSTformat)
-        self.UctTime_F.directBody.configure(text=time.UTCformat)
-        self.LstTime_F.directBody.configure(text=time.LSTformat)
+        self.YearTime_F.directBody.configure(text=time.Year_Time,fg_color=self.cget("fg_color"),text_color=self.YearTime_F.textcolor)
+        self.JstTime_F.directBody.configure(text=time.JSTformat,fg_color=self.cget("fg_color"),text_color=self.YearTime_F.textcolor)
+        self.UctTime_F.directBody.configure(text=time.UTCformat,fg_color=self.cget("fg_color"),text_color=self.YearTime_F.textcolor)
+        self.LstTime_F.directBody.configure(text=time.LSTformat,fg_color=self.cget("fg_color"),text_color=self.YearTime_F.textcolor)
         self.YearTime_F.after(1000,self.updateTimer)
 
     def __init__(self,async_list=None,asynctest=None):
@@ -1277,6 +1504,7 @@ class ACU_GUI(customtkinter.CTk):
         IS_SLAVE_MODE=True
         self.SLAVE_MODE_BUTTOM.setnormalColor()
         self.INDIV_MODE_BUTTOM.setdisableColor()
+        self.LCU.setSlaveMode()
 
     def setIndivMode(self):
         global IS_INDIVISUAL_MODE
@@ -1285,6 +1513,7 @@ class ACU_GUI(customtkinter.CTk):
         IS_SLAVE_MODE=False
         self.INDIV_MODE_BUTTOM.setnormalColor()
         self.SLAVE_MODE_BUTTOM.setdisableColor()
+        self.LCU.setIndivMode()
 
     def setStowREL(self):
         global STOW_IS_POS
@@ -1348,20 +1577,22 @@ class ACU_GUI(customtkinter.CTk):
         self.grid_columnconfigure(0, weight=1)
         
         self.protocol('WM_DELETE_WINDOW', self.quit1)
+
+        self.configure(fg_color="#0D1015")
         
 
     
         
-        self.YearTime_F = CustomButton(master=self,text=time.Year_Time,text_size=30,sizeY=5,sizeX=10,X=5,Y=3,fg=self.cget("fg_color"),bd_width=2,bd_color="gray40",cornerradius=0)
+        self.YearTime_F = CustomButton(master=self,textcolor="DarkSlateGray2",Timermode=True,text=time.Year_Time,text_size=30,sizeY=5,sizeX=10,X=5,Y=3,fg=self.cget("fg_color"),bd_width=2,bd_color="DarkSlateGray2",cornerradius=0)
         self.YearTime_F.setDisable()
         
-        self.JstTime_F = CustomButton(master=self,parent=self.YearTime_F,text=time.JSTformat,text_size=30,sizeY=5,sizeX=10,X=210,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="gray40",cornerradius=0)
+        self.JstTime_F = CustomButton(master=self,textcolor="DarkSlateGray2",Timermode=True,parent=self.YearTime_F,text=time.JSTformat,text_size=30,sizeY=5,sizeX=10,X=210,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="DarkSlateGray2",cornerradius=0)
         self.JstTime_F.setDisable()
         
-        self.LstTime_F = CustomButton(master=self,parent=self.JstTime_F,text=time.LSTformat,text_size=30,sizeY=5,sizeX=10,X=250,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="gray40",cornerradius=0)
+        self.LstTime_F = CustomButton(master=self,textcolor="DarkSlateGray2",Timermode=True,parent=self.JstTime_F,text=time.LSTformat,text_size=30,sizeY=5,sizeX=10,X=250,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="DarkSlateGray2",cornerradius=0)
         self.LstTime_F.setDisable()
         
-        self.UctTime_F = CustomButton(master=self,parent=self.LstTime_F,text=time.UTCformat,text_size=30,sizeY=5,sizeX=10,X=250,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="gray40",cornerradius=0)
+        self.UctTime_F = CustomButton(master=self,textcolor="DarkSlateGray2",Timermode=True,parent=self.LstTime_F,text=time.UTCformat,text_size=30,sizeY=5,sizeX=10,X=250,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="DarkSlateGray2",cornerradius=0)
         self.UctTime_F.setDisable()
         
         self.UctTime_F.after(1000,self.updateTimer)
@@ -1387,15 +1618,18 @@ class ACU_GUI(customtkinter.CTk):
 
         self.SLAVE_MODE_BUTTOM=CustomButton(master=self,text="SLAVE",textcolor="DarkSlateGray2",X=55,Y=11,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setSlaveMode)
         self.INDIV_MODE_BUTTOM=CustomButton(master=self,text="INDIV",textcolor="DarkSlateGray2",X=70,Y=11,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setIndivMode)
-        self.setIndivMode()
+        
 
         self.STOW_F=CustomText(master=self,text="STOW:",text_size=20,X=5,Y=11,sizeX=30,sizeY=6)
         self.STOW_POS_B=CustomButton(master=self,parent=self.STOW_F,text="POS",textcolor="DarkSlateGray2",X=80,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowPos)
         self.STOW_LOCK_B=CustomButton(master=self,parent=self.STOW_POS_B,text="LOCK",textcolor="DarkSlateGray2",X=170,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowLOCK)
         self.STOW_REL_B=CustomButton(master=self,parent=self.STOW_LOCK_B,text="REL",textcolor="DarkSlateGray2",X=170,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowREL)
-        self.setStowLOCK()
+        
 
         self.LCU=LCU_Controller(master=self)
+
+        self.setIndivMode()
+        self.setStowLOCK()
         #self.COM_F.combbox.configure(command=self.ThrowSelectedCom2Backend)
         
         #textbox=CustomTextBox(master=self,text="FUCKYOU!",text_size=30,sizeX=30,sizeY=30)

@@ -6,7 +6,111 @@ import time
 import struct
 import asyncio
 
+class RadDiffCalc():
+    Coord1=None
+    Coord2=None
+    Coord3=None
+    Coord4=None
 
+    def __init__(self):
+        self.Coord1=radfunc(coord=1)
+        self.Coord2=radfunc(coord=2)
+        self.Coord3=radfunc(coord=3)
+        self.Coord4=radfunc(coord=4)
+        self.Coord1.AfterInit(LeftCoord=self.Coord2,rightCoord=self.Coord4)
+        self.Coord2.AfterInit(LeftCoord=self.Coord3,rightCoord=self.Coord1)
+        self.Coord3.AfterInit(LeftCoord=self.Coord4,rightCoord=self.Coord2)
+        self.Coord4.AfterInit(LeftCoord=self.Coord1,rightCoord=self.Coord3)
+
+    def CalcDiff(self,Start=0,Goal=0):
+        coord=self.Coord1.Getrad2Coord(rad=Start)
+        if coord is self.Coord1.coord:
+            return self.Coord1.getRadFactor(start_rad=Start,goal_rad=Goal)
+        if coord is self.Coord2.coord:
+            return self.Coord2.getRadFactor(start_rad=Start,goal_rad=Goal)
+        if coord is self.Coord3.coord:
+            return self.Coord3.getRadFactor(start_rad=Start,goal_rad=Goal)
+        if coord is self.Coord4.coord:
+            return self.Coord4.getRadFactor(start_rad=Start,goal_rad=Goal)
+
+class radfunc():
+    coord=0
+    left=None
+    right=None
+    myRad=0
+    goal=0
+    myMax=0
+    MyMin=0
+
+    def Getrad2Coord(self,rad=0):
+        if rad>=0 and rad<90:
+            return 1
+        if rad>=90 and rad<180:
+            return 2
+        if rad>=180 and rad<270:
+            return 3
+        if rad>=270 and rad<=360:
+            return 4
+
+    def MyFunc(self):
+        return self.goal-self.myRad
+    
+    def leftFunc(self):
+        re=0
+        if self.coord==4:
+            re= (self.goal+360)-self.myRad
+        else:
+            re=self.goal-self.myRad
+        return re
+    
+    def rightFunc(self):
+        re=0
+        if self.coord==1:
+            re= self.goal+(self.myRad-360)
+        else:
+            re=self.goal-self.myRad
+        return re
+
+    def otherFunc(self):
+        leftdiff=self.myMax-self.myRad+90+self.goal-self.left.myMax
+        rightdiff=self.MyMin-self.myRad-90-self.goal-self.right.myMax
+        rightdiff*=-1
+        if leftdiff<rightdiff:
+            return leftdiff
+        else:
+            return rightdiff*-1
+
+    def getRadFactor(self,start_rad=0,goal_rad=0):
+        self.myRad=start_rad
+        self.goal=goal_rad
+        Coord=self.Getrad2Coord(rad=goal_rad)
+        if Coord is self.left.coord:
+            return self.leftFunc()
+        elif Coord is self.right.coord:
+            return self.rightFunc()
+        elif Coord is self.coord:
+            return self.MyFunc()
+        else:
+            return self.otherFunc()
+            
+    def AfterInit(self,LeftCoord=None,rightCoord=None):
+        self.left=LeftCoord
+        self.right=rightCoord
+    
+    def __init__(self,coord=0):
+        self.coord=coord
+        if self.coord==1:
+            self.myMax=90
+            self.MyMin=0
+        if self.coord==2:
+            self.myMax=180
+            self.MyMin=90
+        if self.coord==3:
+            self.myMax=270
+            self.MyMin=180
+        if self.coord==4:
+            self.myMax=360
+            self.MyMin=270
 
 class ACUBackEnd():
     
@@ -127,7 +231,6 @@ class AsyncedClass():
         if self.sleepTime>0:
             time.sleep(float(self.sleepTime))
 
-        
 class Serialcommunicator():
     Serial=None
     RoopBackCom= [ 0xB6, 0x01, 0x02, 0x00 ]
@@ -194,6 +297,117 @@ class comMonitor(AsyncedClass):
         self.master=ma
         super().__init__(acu)
 
+class SpeedClass():
+    before=0
+    now=0
+    def get_diff(self):
+        return self.now-self.before
+    def __init__(self) -> None:
+        pass
+
+class moveTEST(AsyncedClass):
+    Az_prog=0
+    El_Prog=0
+    Azreal=90
+    Elreal=0
+    speed=2
+    Az_Calcltor=None
+
+    Az_Speed_calc=SpeedClass()
+    El_Speed_calc=SpeedClass()
+
+    bfr_az_diff=0
+    bfr_el_diff=0
+
+
+    def Async(self):
+        az_mode="prog"
+        el_mode="prog"
+        az_prog=self.Az_prog
+        el_prog=self.El_Prog
+        ACU_IS_INDI,ACU_IS_SLAVE=self.ACUmonitor.FrontEnd.getMode()
+        Allmode="indiv" if ACU_IS_INDI else "slave"
+        ELmoveMode="none"
+        AZmoveMode="none"
+        if ACU_IS_SLAVE:
+            EL_IS_STBY,EL_IS_PROG,EL_IS_MAN=self.ACUmonitor.FrontEnd.getElmode()
+            ELmoveMode="stby" if EL_IS_STBY else "prog"
+            AZ_IS_STBY,AZ_IS_PROG,AZ_IS_MAN=self.ACUmonitor.FrontEnd.getAzmode()
+            AZmoveMode="stby" if AZ_IS_STBY else "prog"
+            if AZ_IS_PROG:
+                self.Azprog()
+                az_prog=self.Az_prog
+            elif AZ_IS_MAN:
+                az_prog=self.Az_prog=self.ACUmonitor.FrontEnd.getAzManualRot()/10000
+            if EL_IS_PROG:
+                self.Elprog()
+                el_prog=self.El_Prog
+            elif EL_IS_MAN:
+                el_prog=self.El_Prog=self.ACUmonitor.FrontEnd.getElManualRot()/10000
+            if AZ_IS_STBY or AZ_IS_MAN:
+                az_mode="manu"
+            if EL_IS_STBY or EL_IS_MAN:
+                el_mode="manu"
+        elif ACU_IS_INDI:
+            az_prog=0
+            el_prog=0
+        start_monitor1 = time.perf_counter()
+        self.Az_Speed_calc.before=self.Azreal
+        self.El_Speed_calc.before=self.Elreal
+        self.sleep()
+        self.setAz(mode=Allmode,moveMode=AZmoveMode)
+        self.setEl(mode=Allmode,moveMode=ELmoveMode)
+        start_monitor2 = time.perf_counter()
+        work_time=start_monitor2-start_monitor1
+        self.Az_Speed_calc.now=self.Azreal
+        self.El_Speed_calc.now=self.Elreal
+
+
+
+        self.ACUmonitor.FrontEnd.LCU.updateEl_num(pnum=el_prog,nnum=self.Elreal,work_time=work_time,speed=self.El_Speed_calc.get_diff(),mode=el_mode)
+        self.ACUmonitor.FrontEnd.LCU.updateAz_num(pnum=az_prog,nnum=self.Azreal,work_time=work_time,speed=self.Az_Speed_calc.get_diff(),mode=az_mode)
+    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
+        self.sleepTime=sleepT
+        self.message=message
+        self.master=ma
+        self.Az_Calcltor=RadDiffCalc()
+        super().__init__(acu)
+    def Azprog(self):
+        self.Az_prog+=(self.speed*self.sleepTime)
+        self.Az_prog%=360
+    def Elprog(self):
+        self.El_Prog+=(self.speed*self.sleepTime)
+        self.El_Prog%=90
+    def setAz(self,mode="slave",moveMode="prog"):
+        if moveMode=="stby":
+            self.Azreal=self.Azreal
+        if mode=="slave" and moveMode!="stby":
+            diff=self.Az_Calcltor.CalcDiff(Start=self.Azreal,Goal=self.Az_prog)
+            if diff<0:
+                self.Azreal-=(self.speed*self.sleepTime)
+            elif diff>0:
+                self.Azreal+=(self.speed*self.sleepTime)
+            if diff<=(self.speed*self.sleepTime) and self.bfr_az_diff>=(self.speed*self.sleepTime):
+                self.Azreal=self.Az_prog
+            self.bfr_az_diff=self.Azreal
+        elif mode=="indiv":
+            self.Azreal+=(self.speed*self.sleepTime)
+            self.Azreal%=360
+    def setEl(self,mode="slave",moveMode="prog"):
+        if moveMode=="stby":
+            self.Elreal=self.Elreal
+        if mode=="slave" and moveMode!="stby":
+            diff=self.El_Prog-self.Elreal
+            if diff<0:
+                self.Elreal-=(self.speed*self.sleepTime)
+            elif diff>0:
+                self.Elreal+=(self.speed*self.sleepTime)
+            if diff<=(self.speed*self.sleepTime) and self.bfr_el_diff>=(self.speed*self.sleepTime):
+                self.Elreal=self.El_Prog
+            self.bfr_az_diff=self.Azreal
+        elif mode=="indiv":
+            self.Elreal+=(self.speed*self.sleepTime)
+            self.Elreal%=90
 class serialComunicator(AsyncedClass):
     none="none"
     enable="enable"
