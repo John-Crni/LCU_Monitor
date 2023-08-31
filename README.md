@@ -1,16 +1,29 @@
 # LCU_Monitor
 It's Used to AWARA 10m Antena
 
-インストールしておくライブラリ
-tkinter
-datetime
-dateutil
-pytz
-dateutil
-astropy
-customtkinter
 
-pip install ~~~
+ソフトを使う手順
+その1.ライブラリをインストールする
+ インストールしておくライブラリ
+ コマンドで
+ pip install ~~~と打つ
+ 
+ tkinter
+ datetime
+ dateutil
+ pytz
+ dateutil
+ astropy
+ customtkinter
+
+
+その2.フォントのインストール
+  ファイル内に「x14y24pxHeadUpDaisy.ttf」というファイルがあるのでPCにインストールする
+
+
+ソフトの動かし方
+　ACUMonitor.pyとファイルがあるので、それをvscodeなどのIDEで動かす
+
 
 便利なサイト 
 (度から度分秒に変換する奴)
