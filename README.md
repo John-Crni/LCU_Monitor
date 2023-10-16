@@ -7,6 +7,7 @@ It's Used to AWARA 10m Antena
  インストールしておくライブラリ
  コマンドで
  pip install ~~~と打つ
+ ※☢スペルを間違うと☣ウイルス☣がインストールされる事があるため要注意☢
  
  tkinter
  datetime
@@ -15,7 +16,7 @@ It's Used to AWARA 10m Antena
  dateutil
  astropy
  customtkinter
-
+ pynmea2
 
 その2.フォントのインストール
   ファイル内に「x14y24pxHeadUpDaisy.ttf」というファイルがあるのでPCにインストールする
