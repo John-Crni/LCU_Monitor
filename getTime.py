@@ -14,18 +14,26 @@ JSTformat="???"
 UTCformat="???"
 LSTformat="???"
 
+TEST_DATA="TEST"
+
+
+
 @staticmethod
 def getLocalTime():
     return datetime.datetime.now()
 
 
+
+
 def updateAllTime():
     allTime=getLocalTime()
+    print(allTime)
     setYearFormat(allTime)
     jst=getJST(allTime)
     setJSTFormat(jst)
     setUTCFormat(allTime)
     setLSTFormat(jst)
+    
 
 def setYearFormat(dt):
     global Year_Time

@@ -23,6 +23,7 @@ class Start():
         print(ACU.FrontEnd.NAME)
         ACU.setUpAsync2List(As=ACUbackend.serialComunicator(acu=ACU,sleepT=0.5))
         ACU.setUpAsync2List(As=ACUbackend.moveTEST(acu=ACU,sleepT=0.1))
+        #ACU.setUpAsync2List(As=ACUbackend.GPSTimer(acu=ACU,sleepT=1))
         #ACU.setUpAsync2List(As=ACUbackend.comMonitor(acu=ACU,sleepT=0.5))
         StartGUI.ApperGUI()
         StartGUI.LoopGui()
@@ -30,6 +31,7 @@ class Start():
 class ACU_Monitor():
     BackEnd=None
     FrontEnd=None
+    execteAsyncClass=None
     def __init__(self):
         print("INIT!")
     def getBackEnd(self):
