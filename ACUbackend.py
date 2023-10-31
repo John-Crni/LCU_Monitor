@@ -5,6 +5,10 @@ import threading
 import time
 import struct
 import asyncio
+import getTime as MyTime
+import pynmea2
+from serial.tools import list_ports
+from datetime import datetime
 
 class RadDiffCalc():
     Coord1=None
@@ -297,6 +301,141 @@ class comMonitor(AsyncedClass):
         self.master=ma
         super().__init__(acu)
 
+class enableAsyncOnsite(AsyncedClass):
+    AsyncList=None
+    def setAsyncClass(self,Asyncs=None):
+        if Asyncs is not None:
+            #self.AsyncList.append(acu.BackEnd.Async(Asyncs))
+            print("[enableAsyncOnsite]APPEND!")
+    def Async(self):
+        self.sleep()
+    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
+        self.sleepTime=sleepT
+        self.message=message
+        self.master=ma
+        super().__init__(acu)
+        
+class GIFexecuter(AsyncedClass):
+    GUI=None
+    def Async(self):
+        if self.GUI is not None:
+            self.GUI.setGifFrames()
+        self.sleep()
+    def __init__(self,acu=None,sleepT=0.06,message="Its'Me!",ma=None,GUI=None):
+        self.GUI=GUI
+        self.sleepTime=sleepT
+        self.message=message
+        self.master=ma
+        super().__init__(acu)
+
+'''
+class GIFManager(AsyncedClass):
+    _please_stop = False
+    path = path
+    label = label
+    duration = []  # フレーム表示間隔
+    frames = []  # 読み込んだGIFの画像フレーム
+    last_frame_index = None
+    
+    def Async(self):
+
+        self.sleep()
+    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
+        self.sleepTime=sleepT
+        self.message=message
+        self.master=ma
+        if isinstance(self.path, str):
+            img = Image.open(self.path)
+            frames = []
+        frame_index = 0
+        super().__init__(acu)
+    def load_frames1(self):
+        try:
+            while True:
+                frames.append(ImageTk.PhotoImage(img.copy()))
+                img.seek(frame_index)
+                frame_index += 1
+        except EOFError:
+            self.frames = frames
+            self.last_frame_index = frame_index - 1
+'''
+        
+class GPSTimer(AsyncedClass):
+    #GPSからのデータは恐らく数値型
+    GPSdeviceName="GPS"
+    isGPSConected=False
+    isSucccesConect=False
+    Serial=None
+    Port="COM"
+    Baudrate=9600
+    def getTime(self):
+        num=timezone.find(":")
+    
+    def setDeviceDisconected(self):
+        self.isGPSConected=False
+        self.isSucccesConect=False
+    def setDeviceConected(self):
+        self.isGPSConected=True
+        self.isSucccesConect=False
+    def setSuccces2Conect(self):
+        self.isSucccesConect=True
+    def setFaild2Conect(self):
+        self.isSucccesConect=False
+    def getConectStats(self):
+        return self.isSucccesConect
+    def getDeviceConectStats(self):
+        return self.isSucccesConect
+    
+    def getVeryAccurateTime(self):
+        print("")
+    def Async(self):
+        if not self.getDeviceConectStats():
+            ports=list_ports.comports()
+            device=[info for info in ports if self.GPSdeviceName in info.description] #.descriptionでデバイスの名前を取得出来る
+            if not len(device) == 0:
+                self.Port=device[0].device
+                self.setDeviceConected()
+                self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert("GPSConected!"+":[GPSdevice]")
+        if self.isGPSConected:
+            try:
+                self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert("TryConect"+":[GPSdevice]")
+                self.Serial=serial.Serial(self.Port, self.Baudrate)
+                self.setSuccces2Conect()
+            except:
+                self.setFaild2Conect()
+                self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert("FaildtoConect"+":[GPSdevice]")
+        if self.getConectStats():
+            try:
+                data = ser.readline().decode('utf-8')  # NMEAデータの読み込み
+                
+                if data.startswith('$GPRMC'):  # GNRMCセンテンスの処理
+                    msg = pynmea2.parse(data)
+                    stats = msg.status  # ステータス (A: 有効、V: 無効)
+                    self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert(stats+":[GPSdevice]")
+                    
+                elif data.startswith('$GPGGA'):  # 例: GPGGAセンテンスの処理
+                    msg = pynmea2.parse(data)
+                    lat_dir = msg.lat_dir
+                    latitude = msg.latitude  # 緯度
+                    longitude = msg.longitude  # 経度
+                    lon_dir = msg.lon_dir
+                    altitude = msg.altitude  # 高度
+                    hdop = msg.horizontal_dil  # 水平精度 (HDOP)
+                    time = msg.timestamp  # 時刻
+                    time = datetime.combine(datetime.today().date(), time)
+                    print("GPStime="+time)
+            except:#切断されたときに呼ばれる
+                self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert("Disconected"+":[GPSdevice]")
+                self.setDeviceDisconected()
+            
+        self.sleep()
+    
+    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
+        self.sleepTime=sleepT
+        self.message=message
+        self.master=ma
+        super().__init__(acu)
+
 class SpeedClass():
     before=0
     now=0
@@ -408,6 +547,7 @@ class moveTEST(AsyncedClass):
         elif mode=="indiv":
             self.Elreal+=(self.speed*self.sleepTime)
             self.Elreal%=90
+
 class serialComunicator(AsyncedClass):
     none="none"
     enable="enable"
