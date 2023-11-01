@@ -235,6 +235,8 @@ class AsyncedClass():
         if self.sleepTime>0:
             time.sleep(float(self.sleepTime))
 
+
+
 class Serialcommunicator():
     Serial=None
     RoopBackCom= [ 0xB6, 0x01, 0x02, 0x00 ]
@@ -315,51 +317,89 @@ class enableAsyncOnsite(AsyncedClass):
         self.master=ma
         super().__init__(acu)
         
-class GIFexecuter(AsyncedClass):
-    GUI=None
-    def Async(self):
-        if self.GUI is not None:
-            self.GUI.setGifFrames()
-        self.sleep()
-    def __init__(self,acu=None,sleepT=0.06,message="Its'Me!",ma=None,GUI=None):
-        self.GUI=GUI
-        self.sleepTime=sleepT
-        self.message=message
-        self.master=ma
-        super().__init__(acu)
+class Serialcommunicator4GeneralUse(AsyncedClass):
+    none="none"
+    enable="enable"
+    conected="conected"
+    disconected="disconected"
+    notconect="notconect"
+    unkowm="unkowm"
 
-'''
-class GIFManager(AsyncedClass):
-    _please_stop = False
-    path = path
-    label = label
-    duration = []  # フレーム表示間隔
-    frames = []  # 読み込んだGIFの画像フレーム
-    last_frame_index = None
+    #GPSからのデータは恐らく数値型
+    deviceType=none
+    deviceName=none
+    isDeviceConected=False
+    isSucccesConect=False
+    Serial=None
+    Port=none
+    Baudrate=9600
+
+    def setText2CommandLine(self,text="none"):
+        self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert(self.deviceType+text+":[SerialComunicator]")
     
-    def Async(self):
+    def setDeviceDisconected(self):
+        self.isDeviceConected=False
+        self.isSucccesConect=False
+        self.setText2CommandLine(text="Disconected!")
 
+    def setDeviceConected(self):
+        self.isDeviceConected=True
+        self.isSucccesConect=False
+        self.setText2CommandLine(text="Conected!")
+
+    def setSuccces2Conect(self):
+        self.isSucccesConect=True
+
+    def setFaild2Conect(self):
+        self.isSucccesConect=False
+        self.setText2CommandLine(text="FaildtoConect")
+
+    def getConectStats(self):
+        return self.isSucccesConect
+    
+    def getDeviceConectStats(self):
+        return self.isSucccesConect
+    
+    def disconectSerial(self):
+        if isinstance(self.Serial,serial):
+            self.Serial.close()
+
+
+    def Async(self):
+        if not self.getDeviceConectStats():
+            ports=list_ports.comports()
+            device=[info for info in ports if self.deviceName in info.description] #.descriptionでデバイスの名前を取得出来る
+            if not len(device) == 0:
+                self.Port=device[0].device
+                self.setDeviceConected()
+        if self.isDeviceConected:
+            try:
+                self.setText2CommandLine(text="TryConect")
+                self.Serial=serial.Serial(self.Port, self.Baudrate)
+                self.setSuccces2Conect()
+            except:
+                self.setFaild2Conect()
+        if self.getConectStats():
+            try:
+                self.SerialFunc()
+            except:#切断されたときに呼ばれる
+                self.setDeviceDisconected()
+            
         self.sleep()
-    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
+
+    def SerialFunc(self):
+        print("SerialFunc")
+    
+    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none"):
+        self.deviceName=deviceName
+        self.deviceType=deviceType
         self.sleepTime=sleepT
         self.message=message
         self.master=ma
-        if isinstance(self.path, str):
-            img = Image.open(self.path)
-            frames = []
-        frame_index = 0
         super().__init__(acu)
-    def load_frames1(self):
-        try:
-            while True:
-                frames.append(ImageTk.PhotoImage(img.copy()))
-                img.seek(frame_index)
-                frame_index += 1
-        except EOFError:
-            self.frames = frames
-            self.last_frame_index = frame_index - 1
-'''
-        
+
+
+
 class GPSTimer(AsyncedClass):
     #GPSからのデータは恐らく数値型
     GPSdeviceName="GPS"
@@ -406,7 +446,7 @@ class GPSTimer(AsyncedClass):
                 self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert("FaildtoConect"+":[GPSdevice]")
         if self.getConectStats():
             try:
-                data = ser.readline().decode('utf-8')  # NMEAデータの読み込み
+                data = self.Serial.readline().decode('utf-8')  # NMEAデータの読み込み
                 
                 if data.startswith('$GPRMC'):  # GNRMCセンテンスの処理
                     msg = pynmea2.parse(data)
@@ -427,7 +467,6 @@ class GPSTimer(AsyncedClass):
             except:#切断されたときに呼ばれる
                 self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert("Disconected"+":[GPSdevice]")
                 self.setDeviceDisconected()
-            
         self.sleep()
     
     def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
