@@ -15,7 +15,8 @@ It's Used to AWARA 10m Antena
  dateutil
  astropy
  customtkinter
-
+ skyfield
+ Pillow
 
 その2.フォントのインストール
   ファイル内に「x14y24pxHeadUpDaisy.ttf」というファイルがあるのでPCにインストールする
