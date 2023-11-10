@@ -8,7 +8,19 @@ import asyncio
 import getTime as MyTime
 import pynmea2
 from serial.tools import list_ports
-from datetime import datetime
+from datetime import datetime,timedelta
+import datetime as DATE_TIME
+from pytz import timezone
+import dateutil
+import dateutil.parser
+from dateutil import tz
+import astropy as ASTRO
+import astropy.coordinates
+from astropy.units import deg
+from astropy.units import m
+from skyfield.api import Topos, load
+import pynmea2
+import ephem
 
 class RadDiffCalc():
     Coord1=None
@@ -360,6 +372,42 @@ class GIFManager(AsyncedClass):
             self.last_frame_index = frame_index - 1
 '''
 
+class setTime(AsyncedClass):
+    ts=None
+    t0=None
+    def Async(self):
+        UTC=DATE_TIME.datetime.now(DATE_TIME.timezone.utc)
+                
+        JST=UTC.astimezone(timezone('Asia/Tokyo'))
+        LST=self.setLSTFormat(datetime_=JST)
+        jst_time="JST:"+str(JST.hour)+":"+str(JST.minute)+":"+str(JST.second)
+        utc_time="UTC:"+str(UTC.hour)+":"+str(UTC.minute)+":"+str(UTC.second)
+        year_time=(str(JST.year)+"."+str(JST.month)+"."+str(JST.day))
+        self.ACUmonitor.FrontEnd.updateTimerbybackend(Year_Time=year_time,JSTformat=jst_time,UTCformat=utc_time,LSTformat=LST,UTC=str(TTT.utc.second))
+        self.sleep()
+        
+    def setLSTFormat(self,datetime_):
+        location=ASTRO.coordinates.EarthLocation(
+            lon = (138 + 28/60 + 21.2/3600) * deg,
+            lat = (35 + 56/60 + 40.9/3600)  * deg,
+            height = 1350 * m,
+        )
+        localtime = ASTRO.time.Time(datetime_, format='datetime', location=location)
+        lst=localtime.sidereal_time('apparent')
+        lst_h = int(lst.hour)
+        lst_m = int((lst.hour - lst_h) * 60)
+        lst_s = int((lst.hour - lst_h - lst_m/60) * 3600)
+        lst_ = '{lst_h:02d}:{lst_m:02d}:{lst_s:02d}'.format(**locals())
+        msg = '{lst_}'.format(**locals())
+        return "LST:"+msg
+    
+    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
+        self.sleepTime=sleepT
+        self.message=message
+        self.master=ma
+        self.ts=load.timescale(builtin=True)
+        super().__init__(acu)
+
 class Serialcommunicator4GeneralUse(AsyncedClass):
     none="none"
     enable="enable"
@@ -376,26 +424,29 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
     Serial=None
     Port=none
     Baudrate=9600
+    
+    def getStringEqual(self,text1="none",text2="NONE"):
+        return text1.casefold()==text2.casefold()
 
     def setText2CommandLine(self,text="none"):
-        self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert(self.deviceType+text+":[SerialComunicator]")
+        self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert(text+":["+self.deviceType+"]")
     
     def setDeviceDisconected(self):
         self.isDeviceConected=False
         self.isSucccesConect=False
-        self.setText2CommandLine(text="Disconected!")
+        self.setText2CommandLine(text=" Disconected!")
 
     def setDeviceConected(self):
         self.isDeviceConected=True
         self.isSucccesConect=False
-        self.setText2CommandLine(text="Conected!")
+        self.setText2CommandLine(text=" Conected!")
 
     def setSuccces2Conect(self):
         self.isSucccesConect=True
 
     def setFaild2Conect(self):
         self.isSucccesConect=False
-        self.setText2CommandLine(text="FaildtoConect")
+        self.setText2CommandLine(text=" ConectFaild!")
 
     def getConectStats(self):
         return self.isSucccesConect
@@ -415,23 +466,40 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
             if not len(device) == 0:
                 self.Port=device[0].device
                 self.setDeviceConected()
-        if self.isDeviceConected:
+            else:
+                if self.isDeviceConected:
+                    self.setDeviceDisconected()
+                else:
+                    self.isDeviceConected=False
+                    self.isSucccesConect=False
+        if self.isDeviceConected and not self.getConectStats():
             try:
+                if isinstance(self.Serial,serial.Serial):
+                    self.Serial.close()
+                    self.Serial=None
                 self.setText2CommandLine(text="TryConect")
                 self.Serial=serial.Serial(self.Port, self.Baudrate)
                 self.setSuccces2Conect()
-            except:
+            except (OSError, serial.SerialException):#切断されたときに呼ばれる
                 self.setFaild2Conect()
+            except:
+                if isinstance(self.Serial,serial.Serial):
+                    self.setText2CommandLine(text="ProgExept!")
+                pass
         if self.getConectStats():
             try:
                 self.SerialFunc()
-            except:#切断されたときに呼ばれる
+            except (OSError, serial.SerialException):#切断されたときに呼ばれる
                 self.setDeviceDisconected()
+            except:
+                if isinstance(self.Serial,serial.Serial):
+                    self.setText2CommandLine(text="ProgExept!")
+                pass
             
         self.sleep()
 
     def SerialFunc(self):
-        print("SerialFunc")
+        pass
     
     def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none"):
         self.deviceName=deviceName
@@ -440,7 +508,180 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
         self.message=message
         self.master=ma
         super().__init__(acu)
+    
+class AnntenaController(Serialcommunicator4GeneralUse):
+    
+    ACUmodeManager=None
+    
+    setUped=False
+    
+    ElevationAngle=0
+    
+    AzimuthAngle=0
+    
+    timeScale=None
+    
+    
+    
+    def disconectSerial(self):
+        super(AnntenaController,self).disconectSerial()
+        self.setUped=False
+        
+    def SerialWrite(self,code="@0BAU W9600<cr><lf>"):
+        if self.Serial is not None:
+            ASCII=code.encode('ascii')#上記のコマンドをアスキーに変換しています pythonではByte型にこの時点でなっています
+            self.Serial.write(ASCII)
+            
+    def calculateAngles(self):
+        ra=None
+        dec=None
+        if self.ACUmodeManager.getRaDecMode:#Ra,Decの場合
+            ra,dec=self.ACUmodeManager.getRaDecValue
+            pass
+        else:#星の名前
+            pass
+            
+    
+    def setUpAntenna(self):
+        if not self.setUped:
+            self.timeScale=load.timescale(builtin=True)
+        else:
+            pass
+    
+    def setAzRot2Anttena(self,rot=0):
+        pass
+    
+    def setElRot2Anttena(self,rot=0):
+        pass
+    
+    def convertRot2Text(self,rot=0):
+        pass
+    
+    def convertText2Rot(self,text="0"):
+        pass
+    
+    
+    
+    def SerialFunc(self):
+        super(AnntenaController,self).SerialFunc()
+        self.setUpAntenna()
+        data = self.Serial.readline().decode('utf-8') #or ascii
+        if self.setUped:
+            if self.ACUmodeManager.getControllMode:#SLAVE_MODE
+                #ここで0.1秒ごとの計算を行う
+                if self.ACUmodeManager.getAzMode:#True=Prog
+                    pass
+                elif self.ACUmodeManager.getAzMode is False:#False=Manual
+                    pass
+                else: #None=Stanby
+                    pass
+                
+                if self.ACUmodeManager.getElMode:#True=Prog
+                    pass
+                elif self.ACUmodeManager.getElMode is False:#False=Manual
+                    pass
+                else: #None=Stanby
+                    pass
+                
+            else:
+                pass
+        
+        
+        
+        
+    
+    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none"):
+        super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType)
+        self.ACUmodeManager=ACUmonitorModeManager(acu=self.ACUmonitor)
 
+
+class ACUmonitorModeManager():
+
+    IS_SLAVE_MODE=False
+    IS_INDIVISUAL_MODE=True
+
+    STOW_IS_POS=False
+    STOW_IS_REL=False
+    STOW_IS_LOCK=True
+
+    AZ_IS_STBY=False
+    AZ_IS_PROG=True
+    AZ_IS_MAN=False
+
+    EL_IS_STBY=False
+    EL_IS_PROG=True
+    EL_IS_MAN=False
+    
+    IS_USE_RADEC=True
+    IS_USE_STARNAME=False
+    
+
+    ACU=None
+    
+    def update(self):
+        self.IS_SLAVE_MODE,self.IS_INDIVISUAL_MODE,self.STOW_IS_POS,self.STOW_IS_REL,self.STOW_IS_LOCK,self.AZ_IS_STBY,self.AZ_IS_PROG,self.AZ_IS_MAN,self.EL_IS_STBY,self.EL_IS_PROG,self.EL_IS_MAN=self.ACU.FrontEnd.getStats()
+    
+    def getControllMode(self):#True=SLAVE,False=INDIVISUAL
+        return self.IS_SLAVE_MODE
+    
+    def getAzMode(self):#True=Prog,False=Manu,None=Stby
+        re=None
+        if self.AZ_IS_PROG:
+            re=true
+        elif self.AZ_IS_MAN:
+            re=False
+        return re
+    
+    def getElMode(self):#True=Prog,False=Manu,None=Stby
+        re=None
+        if self.EL_IS_PROG:
+            re=true
+        elif self.EL_IS_MAN:
+            re=False
+        return re
+    
+    def getRaDecMode(self):#True=Ra,Dec,False=StarName
+        return self.IS_USE_RADEC
+    
+    def getRaDecValue(self):#Ra,Dec is [ra],[dec],Starmode="mars"
+        pass
+        
+    
+    def __init__(self,acu=None):
+        self.ACU=acu
+        pass
+
+class GPSManager(Serialcommunicator4GeneralUse):
+    
+    GPSstats=False
+    
+    def SerialFunc(self):
+        super(GPSManager,self).SerialFunc()
+        data = self.Serial.readline().decode('utf-8')  # NMEAデータの読み込み
+                                
+        if data.startswith('$GNRMC'):  # GNRMCセンテンスの処理
+            msg = pynmea2.parse(data)
+            stats = msg.status  # ステータス (A: 有効、V: 無効)
+            if self.getStringEqual(text1=stats,text2="A"):
+                self.GPSstats=True
+            else:
+                self.GPSstats=False
+            self.setText2CommandLine(stats)
+                    
+        elif data.startswith('$GNGGA') and self.GPSstats:
+            msg = pynmea2.parse(data)
+            lat_dir = msg.lat_dir
+            latitude = msg.latitude  # 緯度
+            longitude = msg.longitude  # 経度
+            lon_dir = msg.lon_dir
+            altitude = msg.altitude  # 高度
+            hdop = msg.horizontal_dil  # 水平精度 (HDOP)
+            time = msg.timestamp  # 時刻
+            time = datetime.combine(datetime.today().date(), time)
+
+    
+    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none"):
+        super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType)
         
 class GPSTimer(AsyncedClass):
     #GPSからのデータは恐らく数値型
@@ -504,7 +745,7 @@ class GPSTimer(AsyncedClass):
                     stats = msg.status  # ステータス (A: 有効、V: 無効)
                     self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert(stats+":[GPSdevice]")
                     
-                elif data.startswith('$GPGSV'):
+                elif data.startswith('$GNGGA'):
                     msg = pynmea2.parse(data)
                     lat_dir = msg.lat_dir
                     latitude = msg.latitude  # 緯度
@@ -516,17 +757,6 @@ class GPSTimer(AsyncedClass):
                     time = datetime.combine(datetime.today().date(), time)
                     print("GPStime="+time)                
                     
-                elif data.startswith('$GPGGA'):  # 例: GPGGAセンテンスの処理
-                    msg = pynmea2.parse(data)
-                    lat_dir = msg.lat_dir
-                    latitude = msg.latitude  # 緯度
-                    longitude = msg.longitude  # 経度
-                    lon_dir = msg.lon_dir
-                    altitude = msg.altitude  # 高度
-                    hdop = msg.horizontal_dil  # 水平精度 (HDOP)
-                    time = msg.timestamp  # 時刻
-                    time = datetime.combine(datetime.today().date(), time)
-                    print("GPStime="+time)
             except:#切断されたときに呼ばれる
                 self.ACUmonitor.FrontEnd.LCU.Commad_Line.Insert("Disconected"+":[GPSdevice]")
                 self.setDeviceDisconected()
@@ -894,6 +1124,8 @@ class Async(threading.Thread):
                     self.FuncClass.Async()
                 except:
                     print("同期するクラスに、Async()と名前付けされている関数がありません,もしくはそれ以外のエラーが起きています")
+                    import traceback
+                    traceback.print_exc()
             if self.Func is not None and self.alive:
                 self.Func()
 
