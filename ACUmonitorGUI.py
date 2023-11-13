@@ -14,7 +14,6 @@ from PIL import Image,ImageTk
 FONT_TYPE = "x14y24pxHeadUpDaisy"
 DEFAULT_WINDOW_WIDTH=1110
 DEFAULT_WINDOW_HEIGHT=600
-SELECTED_COM="NONE"
 RADIO_BUTTOM_NUM=0
 ANTTENA_AZMIZTH=3600000
 ANTTENA_AZMIZTH_PROG=3600000
@@ -42,13 +41,25 @@ EL_IS_STBY=False
 EL_IS_PROG=True
 EL_IS_MAN=False
 
-IS_COMPLETALLY_CONECTED=False
+IS_COMPLETALLY_CONECTED=FalseNotConect=True
+Conect=False
+AnttenaMoving=False
+
+WINDOW_X_POS=0
+WINDOW_Y_POS=0
 
 IMAGE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images")
 
+GUI_APP=None
 
+NotConect=True
+Conect=False
+AnttenaMoving=False
+SELECTED_COM="NONE"
 
-
+def SetWindowPos(y=0,x=0):
+    WINDOW_X_POS=x
+    WINDOW_Y_POS=y
 
 class CustomBase(customtkinter.CTkFrame):
     image=None
@@ -81,6 +92,7 @@ class CustomBase(customtkinter.CTkFrame):
     isGifMode=False
     duration = []  # フレーム表示間隔
     frames = []  # 読み込んだGIFの画像フレーム
+    executeFrames=[]
     last_frame_index = None
     frame_index_counter=0
     gif_time=60
@@ -90,9 +102,11 @@ class CustomBase(customtkinter.CTkFrame):
     Stats_mode="Strong"
     
     
+    def setDeath(self):
+        if self.directBody is not None:
+            self.directBody.destroy()
     
-    
-    def load_gifFrames(self,path="hogehoge.gif"):
+    def load_gifFrames(self,path="hogehoge.gif"):#使わないが一応年の為、残しておく
         if isinstance(path, str):
             global IMAGE_PATH
             img = Image.open(os.path.join(IMAGE_PATH, path))
@@ -108,17 +122,34 @@ class CustomBase(customtkinter.CTkFrame):
             self.frames = frames
             self.last_frame_index = frame_index
             
+    def load_gifFrames2(self,path="hogehoge.gif"):
+        if self.getStats4GIF():
+            if isinstance(path, str):
+                global IMAGE_PATH
+                img = Image.open(os.path.join(IMAGE_PATH, path))
+                frames = []
+
+            frame_index = 0
+            try:
+                while True:#frames.append(ImageTk.PhotoImage(img.copy()))
+                    frames.append(customtkinter.CTkImage(light_image=ImageTk.getimage(ImageTk.PhotoImage(img.copy())),
+                                                        dark_image=ImageTk.getimage(ImageTk.PhotoImage(img.copy())), size=(self.sizex, self.sizey)))
+                    img.seek(frame_index)
+                    frame_index += 1
+            except EOFError:
+                self.executeFrames = frames
+                self.last_frame_index = frame_index
+            
     def getStats(self):
         return self.Stats
     
     def getStats4GIF(self):
-        return self.getStats and self.isGifMode
+        return self.getStats() and self.isGifMode
             
     def setGifFrames(self):
         global IMAGE_PATH
         if self.getStats4GIF():
-            img=customtkinter.CTkImage(light_image=ImageTk.getimage(self.frames[self.frame_index_counter]),
-                                                 dark_image=ImageTk.getimage(self.frames[self.frame_index_counter]), size=(self.sizex, self.sizey))
+            img=self.executeFrames[self.frame_index_counter]
             self.directBody.configure(image=img)
             self.frame_index_counter += 1
             #最終フレームになったらフレームを０に戻す  ImageTk.getimage( imgtk )
@@ -126,20 +157,23 @@ class CustomBase(customtkinter.CTkFrame):
                 self.frame_index_counter = 0
             self.directBody.after(self.gif_time,self.setGifFrames)
 
-    
     def setCarsolon(self,event):
         self.CarsolisOn=True
     def setCarsolOut(self,event):
         self.CarsolisOn=False
     def setStats(self,stats=None,mode="Strong"):
+        BeforeStats=self.Stats
         self.Stats=stats
+        change=BeforeStats ^ self.Stats
         if stats is not None:
-            if stats is True:
+            if stats is True and change:
                 if mode is "Strong":
                     self.setNormal()
+                    self.frame_index_counter=0
+                    self.setGifFrames()
                 elif mode is "OnlyColor":
                     self.setnormalColor()
-            if stats is False:
+            if stats is False and change:
                 if mode is "Strong":
                     self.setDisable()
                 elif mode is "OnlyColor":
@@ -193,7 +227,7 @@ class CustomBase(customtkinter.CTkFrame):
         #self.directBody.grid(row=0, column=0, padx=10)
         #self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
     def UPDATEGUI(self):
-        i=0
+        self.directBody.configure(self.getWindow())
         #self.directBody.configure(text=self.text)
     def update_gui(self,image_name="none",gif_name="none",gif_time=1.1,text="none_text",text_size=1.1,X=1.1,Y=1.1,sizeX=1.1,sizeY=1.1,bd_width=1.1,bd_color="none",fg="none",bg="none",textcolor="none"):
         global IMAGE_PATH
@@ -202,7 +236,6 @@ class CustomBase(customtkinter.CTkFrame):
             #self.image = customtkinter.CTkImage(light_image=Image.open(os.path.join(IMAGE_PATH, image_name)),
                                                 # dark_image=Image.open(os.path.join(IMAGE_PATH, image_name)), size=(20, 20))
         if gif_name!="none":
-            self.load_gifFrames(path=gif_name+".gif")
             self.image = customtkinter.CTkImage(light_image=Image.open(os.path.join(IMAGE_PATH, "kousin.png")),
                                                  dark_image=Image.open(os.path.join(IMAGE_PATH, "kousin.png")), size=(20, 20))
             self.isGifMode=True
@@ -289,6 +322,8 @@ class CustomBase(customtkinter.CTkFrame):
         else:
             self.place(x=scw,y=sch)
         self.inited=True
+        self.load_gifFrames2(path=gif_name+".gif")
+        #self.finalGifInit()
         self.setGifFrames()
         if image_name!="none":
             img = customtkinter.CTkImage(light_image=Image.open(os.path.join(IMAGE_PATH, image_name)),
@@ -566,11 +601,10 @@ class CustomButton(CustomBase):
         super(CustomButton,self).setdisableColor()
         if self.timermode:
             self.directBody.configure(text_color=self.textcolor)
-            print("GAY!")
         else:
             self.directBody.configure(text_color="gray")
             if self.bd_width>0:
-                self.directBody.configure(border_color=self.disableColor)
+                self.directBody.configure(border_color="gray50")
     def setnormalColor(self):
         super(CustomButton,self).setnormalColor()
         self.directBody.configure(text_color=self.textcolor)
@@ -602,6 +636,8 @@ class CustomButton(CustomBase):
         super(CustomButton,self).UPDATEGUI()
     def setGUI(self):
         super(CustomButton,self).setGUI()
+        if self.timermode:
+            self.hg=self.fg_color
         if self.isGifMode and self.com is not None:
             self.directBody  = customtkinter.CTkButton(master=self.getWindow(),border_width=self.bd_width,hover_color=self.hg,border_color=self.bd_color,image=self.image,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.cornerradius,text_color=self.textcolor,fg_color=self.fg_color,command=self.com,bg_color=self.bg_color)
         elif self.isGifMode and self.com is None:
@@ -725,11 +761,11 @@ class CustomCombobox(CustomBase):
         self.directBody.configure(values=self.value,fg_color=self.fg)
     def setGUI(self):
         super(CustomCombobox,self).setGUI()
-        self.directBody = customtkinter.CTkComboBox(self,border_width=self.bd_width,border_color=self.bd_color,font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.corner,fg_color=self.fg_color,values=self.value)
-        self.directBody.grid(row=0, column=0, padx=self.curb)
-        self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
-    def __init__(self, master, text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None,bg="none",fg="gray50",value=["None1"],bd_width=0,bd_color="none"):
-        super().__init__(master=master,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
+        self.directBody = customtkinter.CTkComboBox(master=self.getWindow(),border_width=self.bd_width,border_color=self.bd_color,font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey,corner_radius=self.corner,fg_color=self.fg_color,values=self.value)
+        self.directBody.grid(row=0, column=0, padx=0)#self.curb
+        #self.grid(row=0, column=0, padx=0, pady=0, sticky="w")
+    def __init__(self, master, putWindow=None,text="none_text",text_size=11,corner=-1,curb=10,X=50,Y=50,sizeX=20,sizeY=20,parent=None,bg="none",fg="gray50",value=["None1"],bd_width=0,bd_color="none"):
+        super().__init__(master=master,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent,putWindow=putWindow)
         self.corner=corner
         self.curb=curb
         self.value=value
@@ -846,15 +882,17 @@ class CustomWindow(customtkinter.CTkFrame):
         self.Window=customtkinter.CTkToplevel(self)
         self.Window.title(self.title)   # ウィンドウタイトル
         self.Window.geometry(str(self.sizeX)+"x"+str(self.sizeY)+"+"+str(self.posX)+"+"+str(self.posY))
-        self.Window.update()# ウィンドウサイズ(幅x高さ)
+        self.Window.configure(fg_color="#0D1015")
+        self.Window.update()# ウィンドウサイズ(幅x高さ)fg_color="#0D1015"
         if self.ismodel:
+            global GUI_APP
             # モーダルにする設定
             self.Window.grab_set()        # モーダルにする
             self.Window.focus_set()       # フォーカスを新しいウィンドウをへ移す
             self.Window.transient(self.master)   # タスクバーに表示しない
 
             # ダイアログが閉じられるまで待つ
-            customtkinter.wait_window(self.Window)  
+           # GUI_APP.wait_window(self.Window)  
 
 class AnotherWIndowUIC():
     AnotherWindowUI=None
@@ -1461,15 +1499,16 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.EL_MODE_MANU_B.setNormal()
         self.EL_MODE_PROG_B.setNormal()
         self.EL_MODE_STBY_B.setNormal()
-
         self.setAzProg()
         self.setELProg()
+        
+        
 
     def __init__(self, master):
         super().__init__(master)
         # add widgets onto the frame...
         bd="DarkSlateGray2"
-        ACU_F=CustomFlame(master=master,sizeX=90,sizeY=76,corner=0,text="",X=50,Y=80,fg="#0D1015",cornerradius=0)
+        ACU_F=CustomFlame(master=master,sizeX=90,sizeY=76,corner=0,text="",X=50,Y=81,fg="#0D1015",cornerradius=0)
         ACU_F.update()
         ACU_F.directBody.update()
         #ACU_F.label.update()
@@ -1567,6 +1606,7 @@ class ACU_GUI(customtkinter.CTk):
     JstTime_F=None
     UctTime_F=None
     LstTime_F=None
+    LOC_F=None
     COM_F=None
     Scaler=None
     COM_Monitor=None
@@ -1609,6 +1649,94 @@ class ACU_GUI(customtkinter.CTk):
     LCU=None
 #+++++++++++++++++++++++++++++++++++++
 #----------------------------------------------------
+
+    '''    
+    AGUIBG=None
+    AGUISettingButtom=None
+    
+    AntenaBG=None
+    
+    MyPCpic=None
+    Antenapic=None
+    Antenagif=None
+    Acupic=None
+    
+    
+    Antena2Acugif=None
+    
+    Acu2Mypcgif=None
+    Mypc2Acugif=None
+    Mypc2AcuDis=None
+    '''
+    def getStats(self):
+        global IS_SLAVE_MODE
+        global IS_INDIVISUAL_MODE
+
+        global STOW_IS_POS
+        global STOW_IS_REL
+        global STOW_IS_LOCK
+
+        global AZ_IS_STBY
+        global AZ_IS_PROG
+        global AZ_IS_MAN
+
+        global EL_IS_STBY
+        global EL_IS_PROG
+        global EL_IS_MAN
+        
+        return IS_SLAVE_MODE,IS_INDIVISUAL_MODE,STOW_IS_POS,STOW_IS_REL,STOW_IS_LOCK,AZ_IS_STBY,AZ_IS_PROG,AZ_IS_MAN,EL_IS_STBY,EL_IS_PROG,EL_IS_MAN
+    
+    Acu2MypcDis=None
+    def Setnotconect2Antenna(self):
+        self.Antenapic.setStats(stats=False)
+        self.Acupic.setStats(stats=False)
+        self.Antena2Acugif.setStats(stats=False)
+        self.Acu2Mypcgif.setStats(stats=False)
+        self.Mypc2Acugif.setStats(stats=False)
+        self.Mypc2AcuDis=CustomFlame(master=self.AGUIBG,parent=self.Mypc2Acugif,image_name="batu.png",fg="transparent",text="",X=43,Y=50,sizeX=6,sizeY=20,cornerradius=0)
+        self.Acu2MypcDis=CustomFlame(master=self.AGUIBG,parent=self.Acu2Mypcgif,image_name="batu.png",fg="transparent",text="",X=43,Y=50,sizeX=6,sizeY=20,cornerradius=0)
+        if isinstance(self.SLAVE_MODE_BUTTOM,CustomBase):
+            self.SLAVE_MODE_BUTTOM.setStats(stats=False)
+            self.INDIV_MODE_BUTTOM.setStats(stats=False)
+            self.STOW_POS_B.setStats(stats=False)
+            self.STOW_LOCK_B.setStats(stats=False)
+            self.STOW_REL_B.setStats(stats=False)
+        
+    def Setconect2Antenna(self):
+        self.Antenapic.setStats(stats=True)
+        self.Acupic.setStats(stats=True)
+        self.Antena2Acugif.setStats(stats=True)
+        self.Acu2Mypcgif.setStats(stats=True)
+        self.Mypc2Acugif.setStats(stats=True)
+        if self.Mypc2AcuDis is not None:
+            self.Mypc2AcuDis.setDeath()
+        if self.Acu2Mypcgif is not None:
+            self.Acu2Mypcgif.setDeath()
+        if isinstance(self.SLAVE_MODE_BUTTOM,CustomBase):
+            self.SLAVE_MODE_BUTTOM.setStats(stats=True)
+            self.INDIV_MODE_BUTTOM.setStats(stats=True)
+            self.STOW_POS_B.setStats(stats=True)
+            self.STOW_LOCK_B.setStats(stats=True)
+            self.STOW_REL_B.setStats(stats=True)    
+            
+    def SetAntennaMoving(self):
+        self.Antenapic=CustomFlame(master=self.AntenaBG,gif_name="movingnew2",fg="transparent",gif_time=100,text="",X=20,Y=50,sizeX=38,sizeY=80,cornerradius=0)
+        self.Acupic.setStats(stats=True)
+        self.Antena2Acugif.setStats(stats=True)
+        self.Acu2Mypcgif.setStats(stats=True)
+        self.Mypc2Acugif.setStats(stats=True)
+        if self.Mypc2AcuDis is not None:
+            self.Mypc2AcuDis.setDeath()
+        if self.Acu2Mypcgif is not None:
+            self.Acu2Mypcgif.setDeath()
+        if isinstance(self.SLAVE_MODE_BUTTOM,CustomBase):
+            self.SLAVE_MODE_BUTTOM.setStats(stats=True)
+            self.INDIV_MODE_BUTTOM.setStats(stats=True)
+            self.STOW_POS_B.setStats(stats=True)
+            self.STOW_LOCK_B.setStats(stats=True)
+            self.STOW_REL_B.setStats(stats=True)
+        
+
     def getMode(self):
         global IS_INDIVISUAL_MODE
         global IS_SLAVE_MODE
@@ -1634,11 +1762,12 @@ class ACU_GUI(customtkinter.CTk):
         global ANTENA_ELEVATION
         return ANTENA_ELEVATION
     
-    def updateTimerbybackend(self,Year_Time="0000.00.00",JSTformat="JST:00:00:00",UTCformat="UTC:00:00:00",LSTformat="LST:00:00:00"):
+    def updateTimerbybackend(self,Year_Time="0000.00.00",JSTformat="JST:00:00:00",UTCformat="UTC:00:00:00",LSTformat="LST:00:00:00",UTC="09"):
         self.YearTime_F.directBody.configure(text=Year_Time,fg_color=self.cget("fg_color"),text_color=self.YearTime_F.textcolor)
         self.JstTime_F.directBody.configure(text=JSTformat,fg_color=self.cget("fg_color"),text_color=self.YearTime_F.textcolor)
         self.UctTime_F.directBody.configure(text=UTCformat,fg_color=self.cget("fg_color"),text_color=self.YearTime_F.textcolor)
         self.LstTime_F.directBody.configure(text=LSTformat,fg_color=self.cget("fg_color"),text_color=self.YearTime_F.textcolor)
+        self.LOC_F.directBody.configure(text=UTC,fg_color=self.cget("fg_color"),text_color=self.YearTime_F.textcolor)
 
     def updateTimer(self):
         time.updateAllTime()
@@ -1713,62 +1842,90 @@ class ACU_GUI(customtkinter.CTk):
         '''
         self.COM_F.after(10,self.MonitorComPorts)
         
-    def setSlaveMode(self):
+    def setSlaveModeFlag(self):
         global IS_INDIVISUAL_MODE
         global IS_SLAVE_MODE
         IS_INDIVISUAL_MODE=False
         IS_SLAVE_MODE=True
-        self.SLAVE_MODE_BUTTOM.setnormalColor()
-        self.INDIV_MODE_BUTTOM.setdisableColor()
+        
+    def setSlaveMode(self):
+        self.setSlaveModeFlag()
+        self.setConectModeUI()
         self.LCU.setSlaveMode()
-
-    def setIndivMode(self):
+        #self.Mypc2AcuDis=CustomFlame(master=self.AGUIBG,parent=self.Mypc2Acugif,image_name="batu.png",fg="#131519",text="",X=50,Y=50,sizeX=10,sizeY=10,cornerradius=0)
+        #self.Acu2Mypcgif=CustomFlame(master=self.AGUIBG,gif_name="rightStripe",gif_time=40,fg=AGUIBGcolor,text="",X=60,Y=80,sizeX=50,sizeY=10,cornerradius=0)
+        #self.Mypc2Acugif
+        #LCU_Setting
+        
+    def setIndivModeFlag(self):
         global IS_INDIVISUAL_MODE
         global IS_SLAVE_MODE
         IS_INDIVISUAL_MODE=True
         IS_SLAVE_MODE=False
-        self.INDIV_MODE_BUTTOM.setnormalColor()
-        self.SLAVE_MODE_BUTTOM.setdisableColor()
+    
+    #OnlyColor
+    def setConectModeUI(self):
+        global IS_INDIVISUAL_MODE
+        global IS_SLAVE_MODE   
+        self.INDIV_MODE_BUTTOM.setStats(stats=IS_INDIVISUAL_MODE,mode="OnlyColor")
+        self.SLAVE_MODE_BUTTOM.setStats(stats=IS_SLAVE_MODE,mode="OnlyColor")
+        if IS_INDIVISUAL_MODE:
+            self.Mypc2Acugif.setStats(stats=False)
+            self.Mypc2AcuDis=CustomFlame(master=self.AGUIBG,parent=self.Mypc2Acugif,image_name="batu.png",fg="transparent",text="",X=43,Y=50,sizeX=6,sizeY=20,cornerradius=0)
+        if IS_SLAVE_MODE:
+            self.Mypc2Acugif.setStats(stats=True)
+            if self.Mypc2AcuDis is not None:
+                self.Mypc2AcuDis.setDeath()
+        
+
+    def setIndivMode(self):
+        self.setIndivModeFlag()
+        self.setConectModeUI()
         self.LCU.setIndivMode()
+        #if self.Mypc2AcuDis is not None:
+           # self.Mypc2AcuDis.setDeath()
 
     def setControllMode2Button(self):
         global IS_INDIVISUAL_MODE
         global IS_SLAVE_MODE
         self.SLAVE_MODE_BUTTOM.setStats(stats=IS_SLAVE_MODE,mode="OnlyColor")
         self.INDIV_MODE_BUTTOM.setStats(stats=IS_INDIVISUAL_MODE,mode="OnlyColor")
-
-    def setStowREL(self):
+        
+    def setStowRELFlag(self):
         global STOW_IS_POS
         global STOW_IS_LOCK
         global STOW_IS_REL
         STOW_IS_POS=False
         STOW_IS_REL=True
         STOW_IS_LOCK=False
-        self.STOW_POS_B.setdisableColor()
-        self.STOW_LOCK_B.setdisableColor()
-        self.STOW_REL_B.setnormalColor()
 
-    def setStowLOCK(self):
+    def setStowREL(self):
+        self.setStowRELFlag()
+        self.setStowMode2Button()
+        
+    def setStowLOCKFlag(self):
         global STOW_IS_POS
         global STOW_IS_LOCK
         global STOW_IS_REL
         STOW_IS_POS=False
         STOW_IS_REL=False
         STOW_IS_LOCK=True
-        self.STOW_POS_B.setdisableColor()
-        self.STOW_LOCK_B.setnormalColor()
-        self.STOW_REL_B.setdisableColor()
 
-    def setStowPos(self):
+    def setStowLOCK(self):
+        self.setStowLOCKFlag()
+        self.setStowMode2Button()
+        
+    def setStowPosFlag(self):
         global STOW_IS_POS
         global STOW_IS_LOCK
         global STOW_IS_REL
         STOW_IS_POS=True
         STOW_IS_REL=False
         STOW_IS_LOCK=False
-        self.STOW_POS_B.setnormalColor()
-        self.STOW_LOCK_B.setdisableColor()
-        self.STOW_REL_B.setdisableColor()
+
+    def setStowPos(self):
+        self.setStowPosFlag()
+        self.setStowMode2Button()
         
     def setStowMode2Button(self):
         global STOW_IS_POS
@@ -1783,31 +1940,67 @@ class ACU_GUI(customtkinter.CTk):
         
     def setDIsconectStats(self):
         self.DISCONECT_BUTTOM_STATS=True
+        self.COM_F.value=self.ACU_Monitor.BackEnd.getSerialPorts()
+        self.COM_F.UPDATEGUI()
+        self.COM_F.setStats(stats=True)
         
     BUTTON_UNENABLE_COLOR="gray"
 
     def updateComList(self):
         self.COM_F.setValue(value=self.ACU_Monitor.BackEnd.getSerialPorts())
         self.COM_F.update_gui()
-    
-    def AppearSettingWindow(self):
-        bd="DarkSlateGray2"
-        test=CustomWindow(master=self,sizex=400,sizey=400)
-        self.STOW_F=CustomText(master=self,text="STOW:",text_size=30,X=10,Y=5,sizeX=30,sizeY=6,putWindow=test)
-        self.STOW_POS_B=CustomButton(putWindow=test,master=self,parent=self.STOW_F,text="POS",textcolor="DarkSlateGray2",X=110,Y=30,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowPos)
-        self.STOW_LOCK_B=CustomButton(putWindow=test,master=self,parent=self.STOW_POS_B,text="LOCK",textcolor="DarkSlateGray2",X=220,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowLOCK)
-        self.STOW_REL_B=CustomButton(putWindow=test,master=self,parent=self.STOW_LOCK_B,text="REL",textcolor="DarkSlateGray2",X=250,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowREL)
-        #self.TEST_BUTTON.setUI(UI=CustomButton(putWindow=test,master=self,textcolor="DarkSlateGray2",text="SIMPLE",text_size=30,sizeY=5,sizeX=10,X=50,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="DarkSlateGray2",cornerradius=0))
-        self.setStowMode2Button() 
-        
+            
     def AppearAntennaSettingWindow(self):
         bd="DarkSlateGray2"
-        window=CustomWindow(master=self,sizex=400,sizey=400,posx=1110,posy=0,isModal=True)
-        modestring=CustomText(putWindow=test,master=self,text="CONTROLL MODE:",text_size=30,X=30,Y=12,sizeX=20,sizeY=6)
-        self.SLAVE_MODE_BUTTOM=CustomButton(putWindow=test,master=self,parent=modestring,text="SLAVE",textcolor="DarkSlateGray2",X=140,Y=38,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setSlaveMode)
-        self.INDIV_MODE_BUTTOM=CustomButton(putWindow=test,master=self,parent=self.SLAVE_MODE_BUTTOM,text="INDIV",textcolor="DarkSlateGray2",X=180,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setIndivMode)
-
+        x,y=self.GetWindowPos()
+        global NotConect
+        global Conect
+        global AnttenaMoving
+        window=CustomWindow(master=self,sizex=400,sizey=400,posx=x+1110,posy=y,isModal=True)
         
+        modestring=CustomText(putWindow=window,master=self,text="CONTROLL MODE",text_size=30,X=10,Y=5,sizeX=20,sizeY=6)
+        self.SLAVE_MODE_BUTTOM=CustomButton(putWindow=window,master=self,parent=modestring,text="SLAVE",textcolor="DarkSlateGray2",X=50,Y=180,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setSlaveMode)
+        self.INDIV_MODE_BUTTOM=CustomButton(putWindow=window,master=self,parent=self.SLAVE_MODE_BUTTOM,text="INDIV",textcolor="DarkSlateGray2",X=380,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setIndivMode)
+
+        self.STOW_F=CustomText(master=self,putWindow=window,text="STOW MODE",text_size=30,X=16,Y=25,sizeX=30,sizeY=6)
+        self.STOW_POS_B=CustomButton(putWindow=window,master=self,parent=self.STOW_F,text="POS",textcolor="DarkSlateGray2",X=50,Y=180,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowPos)
+        self.STOW_LOCK_B=CustomButton(putWindow=window,master=self,parent=self.STOW_POS_B,text="LOCK",textcolor="DarkSlateGray2",X=220,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowLOCK)
+        self.STOW_REL_B=CustomButton(putWindow=window,master=self,parent=self.STOW_LOCK_B,text="REL",textcolor="DarkSlateGray2",X=250,Y=50,sizeX=10,sizeY=5,cornerradius=0,text_size=30,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setStowREL)
+
+        if NotConect:
+            self.SLAVE_MODE_BUTTOM.setStats(stats=False)
+            self.INDIV_MODE_BUTTOM.setStats(stats=False)
+            self.STOW_POS_B.setStats(stats=False)
+            self.STOW_LOCK_B.setStats(stats=False)
+            self.STOW_REL_B.setStats(stats=False)
+        
+        if (not NotConect) and Conect or AnttenaMoving:
+            self.setConectModeUI()
+            self.setStowMode2Button() 
+            
+        
+        if "COM" in  self.SELECTED_COM or "com" in  self.SELECTED_COM:
+            self.COM_F=CustomCombobox(master=self,putWindow=window,value=[self.SELECTED_COM],X=30,Y=60,sizeX=28,sizeY=6,text_size=27,fg=self.cget("fg_color"),bd_width=1,bd_color=bd)
+            self.COM_F.setStats(stats=False)
+        else:
+            self.COM_F=CustomCombobox(master=self,putWindow=window,value=self.ACU_Monitor.BackEnd.getSerialPorts(),X=30,Y=60,sizeX=28,sizeY=6,text_size=27,fg=self.cget("fg_color"),bd_width=1,bd_color=bd)
+        self.UPDATE_COM_BUTTOM=CustomButton(parent=self.COM_F,putWindow=window,master=self,image_name="kousin.png",text="",X=-19,Y=50,sizeX=5,sizeY=5,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.updateComList)
+        self.CONECT_BUTTOM=CustomButton(parent=self.COM_F,putWindow=window,master=self,textcolor="DarkSlateGray2",text=" CONECT ",X=-3,Y=220,sizeX=16,sizeY=5,cornerradius=0,text_size=20,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setConectStats)
+        self.DISCONECT_BUTTOM=CustomButton(parent=self.CONECT_BUTTOM,putWindow=window,master=self,textcolor="DarkSlateGray2",text="DISCONECT",X=25,Y=210,sizeX=8,sizeY=5,cornerradius=0,text_size=20,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setDIsconectStats)
+        self.DISCONECT_BUTTOM.setDisable()
+
+    #-----Relayted Install Program-----------------
+    
+    Files=[]
+    
+    
+    
+    #-----Relayted Install Program-----------------
+                
+    def GetWindowPos(self):
+        text=self.geometry()
+        array=text.split('+')
+        return int(array[1]),int(array[2])
 
         
     def setDisconect2Antena(self):
@@ -1856,15 +2049,22 @@ class ACU_GUI(customtkinter.CTk):
     Antenagif=None
     Acupic=None
     
+    
     Antena2Acugif=None
     
     Acu2Mypcgif=None
     Mypc2Acugif=None
+    Mypc2AcuDis=None
+    
+    InstallProgBtm=None
     
     #--AdvancedGUI--
         
 #----------------------------------------------------
     def ApperGUI(self):
+        global IS_INDIVISUAL_MODE
+        global IS_SLAVE_MODE
+        
         global DEFAULT_WINDOW_HEIGHT
         global DEFAULT_WINDOW_WIDTH
         global SELECTED_COM
@@ -1874,43 +2074,51 @@ class ACU_GUI(customtkinter.CTk):
         time.updateAllTime()
         
         
+        width=self.winfo_screenwidth()/2
+        height=self.winfo_screenheight()/2
+
+        self.geometry(str(DEFAULT_WINDOW_WIDTH)+"x"+str(DEFAULT_WINDOW_HEIGHT)+"+"+str(int(width-(DEFAULT_WINDOW_WIDTH/2)))+"+"+str(int(height-(DEFAULT_WINDOW_HEIGHT/2))))
         
-        self.geometry(str(DEFAULT_WINDOW_WIDTH)+"x"+str(DEFAULT_WINDOW_HEIGHT))
         self.resizable(False,False)
-        self.grid_rowconfigure(0, weight=1)  # configure grid system
-        self.grid_columnconfigure(0, weight=1)
+
         
         self.protocol('WM_DELETE_WINDOW', self.quit1)
 
         self.configure(fg_color="#0D1015")
         
+        
         bd="DarkSlateGray2"
         
-        self.SETTING_BUTTOM=CustomButton(master=self,image_name="setting.png",text="",X=77,Y=3,sizeX=2,sizeY=4,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.AppearSettingWindow)
-
         AGUIBGcolor="#131519"#151618
-        self.AGUIBG=CustomFlame(master=self,sizeX=74,sizeY=35,corner=0,text="",X=38,Y=25,fg=AGUIBGcolor,cornerradius=10,bd_width=1,bd_color=bd)
+        self.AGUIBG=CustomButton(master=self,text="",Timermode=True,sizeX=74,sizeY=35,X=38,Y=25,fg=AGUIBGcolor,bd_width=1,bd_color="DarkSlateGray2",cornerradius=0)
         
-        self.AGUISettingButtom=CustomButton(master=self.AGUIBG,image_name="setting.png",text="",X=77,Y=20,sizeX=3,sizeY=12,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.AppearAntennaSettingWindow)
+        
+        #self.AGUIBG=CustomFlame(master=self,sizeX=74,sizeY=35,corner=0,text="",X=38,Y=25,fg=AGUIBGcolor,cornerradius=10,bd_width=1,bd_color=bd)
+        
+        self.AGUISettingButtom=CustomButton(master=self.AGUIBG,image_name="setting.png",text="",X=97,Y=8,sizeX=3,sizeY=12,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.AppearAntennaSettingWindow)
+        self.InstallProgBtm=CustomButton(master=self.AGUIBG,parent=self.AGUISettingButtom,image_name="casette.png",text="",X=-200,Y=50,sizeX=7,sizeY=12,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        
         
         self.Acu2Mypcgif=CustomFlame(master=self.AGUIBG,gif_name="rightStripe",gif_time=40,fg=AGUIBGcolor,text="",X=60,Y=80,sizeX=50,sizeY=10,cornerradius=0)
+        
         self.Mypc2Acugif=CustomFlame(master=self.AGUIBG,gif_name="leftStripe",gif_time=40,fg=AGUIBGcolor,text="",X=60,Y=60,sizeX=50,sizeY=10,cornerradius=0)
+        if IS_INDIVISUAL_MODE:
+            self.Mypc2Acugif.setStats(stats=False)
         
         AntenaBGcolor="#1b1d21"#0b0e14
-        self.AntenaBG=CustomFlame(master=self.AGUIBG,sizeX=50,sizeY=95,corner=0,text="",X=25,Y=50,fg=AntenaBGcolor)
+        self.AntenaBG=CustomButton(master=self.AGUIBG,text="",Timermode=True,sizeX=50,sizeY=95,X=25,Y=50,fg=AntenaBGcolor,bd_width=1,bd_color="DarkSlateGray2",cornerradius=0)
         
         self.Antena2Acugif=CustomFlame(master=self.AntenaBG,gif_name="stripe",gif_time=50,fg=AntenaBGcolor,text="",X=50,Y=70,sizeX=70,sizeY=8,cornerradius=0)
-        self.Antenapic=CustomFlame(master=self.AntenaBG,gif_name="movingnew2",fg=AntenaBGcolor,gif_time=100,text="",X=20,Y=50,sizeX=38,sizeY=80,cornerradius=0)
+        #.wm_attributes("-transparentcolor", "white")
+        #self.Antenapic=CustomFlame(master=self.AntenaBG,gif_name="movingnew2",fg="transparent",gif_time=100,text="",X=20,Y=50,sizeX=38,sizeY=80,cornerradius=0)
+        
+        self.Antenapic=CustomFlame(master=self.AntenaBG,gif_name="cute",fg="transparent",gif_time=100,text="",X=20,Y=50,sizeX=38,sizeY=80,cornerradius=0)
+        
         self.Acupic=CustomFlame(master=self.AntenaBG,parent=self.Antenapic,image_name="PC.png",fg=AntenaBGcolor,text="",X=210,Y=70,sizeX=32,sizeY=50,cornerradius=0)
         
         self.MyPCpic=CustomFlame(master=self.AGUIBG,image_name="PC.png",fg=AGUIBGcolor,text="",X=75,Y=60,sizeX=25,sizeY=60,cornerradius=0)#attributes('-alpha', 0.5)
         
-        
-        
         #self.Antena2Acugif=CustomFlame(master=self.AntenaBG,parent=self.Antenapic,gif_name="orange",gif_time=50,fg=AntenaBGcolor,text="",X=100,Y=70,sizeX=30,sizeY=10,cornerradius=0)
-        
-        
-        
         
         self.YearTime_F = CustomButton(master=self,textcolor="DarkSlateGray2",Timermode=True,text=time.Year_Time,text_size=30,sizeY=5,sizeX=10,X=5,Y=3,fg=self.cget("fg_color"),bd_width=2,bd_color="DarkSlateGray2",cornerradius=0)
         self.YearTime_F.setDisable()
@@ -1924,7 +2132,9 @@ class ACU_GUI(customtkinter.CTk):
         self.UctTime_F = CustomButton(master=self,textcolor="DarkSlateGray2",Timermode=True,parent=self.LstTime_F,text=time.UTCformat,text_size=30,sizeY=5,sizeX=10,X=250,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="DarkSlateGray2",cornerradius=0)
         self.UctTime_F.setDisable()
         
-        #self.UctTime_F.after(1000,self.updateTimer)   gif_name=gif_name,gif_time
+        self.LOC_F=CustomButton(master=self,textcolor="DarkSlateGray2",Timermode=True,parent=self.UctTime_F,text="LOC:ふくいのどっか",text_size=30,sizeY=5,sizeX=10,X=250,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="DarkSlateGray2",cornerradius=0)
+        self.LOC_F.setDisable()
+        #self.UctTime_F.after(1000,self.updateTimer)  
         #self.TEST_BUTTON=AnotherWIndowUIC(UI=None,Stats=True) 
         
         
@@ -1934,11 +2144,13 @@ class ACU_GUI(customtkinter.CTk):
         #Place_F = CustomFlame(master=self,text="あわらキャンパス",text_size=30,sizeX=10,sizeY=7,X=90,Y=14)
         #self.COM_STATS_F=CustomFlame(master=self,text="Unkown",X=80,Y=11,sizeX=16,sizeY=6,text_size=20)
         
+        '''
         self.COM_F=CustomCombobox(master=self,value=self.ACU_Monitor.BackEnd.getSerialPorts(),X=88,Y=3,sizeX=13,sizeY=6,text_size=27,fg=self.cget("fg_color"),bd_width=1,bd_color=bd)
         self.UPDATE_COM_BUTTOM=CustomButton(parent=self.COM_F,master=self,image_name="kousin.png",text="",X=-10,Y=50,sizeX=2,sizeY=4,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.updateComList)
         self.CONECT_BUTTOM=CustomButton(parent=self.COM_F,master=self,textcolor="DarkSlateGray2",text="CONECT",X=55,Y=155,sizeX=10,sizeY=5,cornerradius=0,text_size=20,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setConectStats)
         self.DISCONECT_BUTTOM=CustomButton(parent=self.CONECT_BUTTOM,master=self,textcolor="DarkSlateGray2",text="DISCONECT",X=40,Y=180,sizeX=8,sizeY=5,cornerradius=0,text_size=20,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setDIsconectStats)
         self.DISCONECT_BUTTOM.setDisable()
+        '''
         
         #self.SELECTED_COM=self.COM_F.combbox.get()
         
@@ -1971,6 +2183,10 @@ class ACU_GUI(customtkinter.CTk):
         #self.COM_Monitor=threading.Thread(target=self.ThrowSelectedCom2Backend)
         #self.COM_Monitor.start()
         
+        self.Setnotconect2Antenna()
+        
+        self.setIndivModeFlag()
+        
         self.enableAsync()
         
         
@@ -1985,7 +2201,9 @@ class StartGUI():
     def getGUI(self):
         return self.gui
     def LoopGui(self):
+        global GUI_APP
         self.gui.mainloop()
+        GUI_APP=self.gui
     def ApperGUI(self):
         self.gui.ApperGUI()
     def setAsync_Class(self,Async):

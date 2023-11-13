@@ -27,9 +27,10 @@ def getLocalTime():
 
 def updateAllTime():
     allTime=getLocalTime()
-    print(allTime)
+    #print(allTime)
     setYearFormat(allTime)
     jst=getJST(allTime)
+    print("JST"+str(jst))
     setJSTFormat(jst)
     setUTCFormat(allTime)
     setLSTFormat(jst)

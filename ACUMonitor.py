@@ -2,8 +2,8 @@ import ACUmonitorGUI
 import ACUbackend
 import threading
 import time
-from multiprocessing import Process
-import asyncio
+#from multiprocessing import Process
+#import asyncio
 
 ACUMONITOR=None
 
@@ -23,7 +23,8 @@ class Start():
         print(ACU.FrontEnd.NAME)
         ACU.setUpAsync2List(As=ACUbackend.serialComunicator(acu=ACU,sleepT=0.5))
         ACU.setUpAsync2List(As=ACUbackend.moveTEST(acu=ACU,sleepT=0.1))
-        #ACU.setUpAsync2List(As=ACUbackend.GPSTimer(acu=ACU,sleepT=1))
+        ACU.setUpAsync2List(As=ACUbackend.GPSManager(acu=ACU,sleepT=0.1,deviceName="Prolific",deviceType="GPS"))
+        ACU.setUpAsync2List(As=ACUbackend.setTime(acu=ACU,sleepT=0.25))
         #ACU.setUpAsync2List(As=ACUbackend.comMonitor(acu=ACU,sleepT=0.5))
         StartGUI.ApperGUI()
         StartGUI.LoopGui()
