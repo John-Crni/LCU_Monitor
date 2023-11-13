@@ -2056,6 +2056,8 @@ class ACU_GUI(customtkinter.CTk):
     Mypc2Acugif=None
     Mypc2AcuDis=None
     
+    ObserbSettingBtm=None
+    
     InstallProgBtm=None
     
     #--AdvancedGUI--
@@ -2099,24 +2101,26 @@ class ACU_GUI(customtkinter.CTk):
         self.InstallProgBtm=CustomButton(master=self.AGUIBG,parent=self.AGUISettingButtom,image_name="casette.png",text="",X=-200,Y=50,sizeX=7,sizeY=12,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         
         
-        self.Acu2Mypcgif=CustomFlame(master=self.AGUIBG,gif_name="rightStripe",gif_time=40,fg=AGUIBGcolor,text="",X=60,Y=80,sizeX=50,sizeY=10,cornerradius=0)
+        self.Acu2Mypcgif=CustomFlame(master=self.AGUIBG,gif_name="rightStripe",gif_time=40,fg=AGUIBGcolor,text="",X=70,Y=80,sizeX=50,sizeY=10,cornerradius=0)
         
-        self.Mypc2Acugif=CustomFlame(master=self.AGUIBG,gif_name="leftStripe",gif_time=40,fg=AGUIBGcolor,text="",X=60,Y=60,sizeX=50,sizeY=10,cornerradius=0)
+        self.Mypc2Acugif=CustomFlame(master=self.AGUIBG,gif_name="leftStripe",gif_time=40,fg=AGUIBGcolor,text="",X=70,Y=60,sizeX=50,sizeY=10,cornerradius=0)
         if IS_INDIVISUAL_MODE:
             self.Mypc2Acugif.setStats(stats=False)
         
         AntenaBGcolor="#1b1d21"#0b0e14
-        self.AntenaBG=CustomButton(master=self.AGUIBG,text="",Timermode=True,sizeX=50,sizeY=95,X=25,Y=50,fg=AntenaBGcolor,bd_width=1,bd_color="DarkSlateGray2",cornerradius=0)
+        self.AntenaBG=CustomButton(master=self.AGUIBG,text="",Timermode=True,sizeX=60,sizeY=95,X=31,Y=50,fg=AntenaBGcolor,bd_width=1,bd_color="DarkSlateGray2",cornerradius=0)
         
         self.Antena2Acugif=CustomFlame(master=self.AntenaBG,gif_name="stripe",gif_time=50,fg=AntenaBGcolor,text="",X=50,Y=70,sizeX=70,sizeY=8,cornerradius=0)
         #.wm_attributes("-transparentcolor", "white")
         #self.Antenapic=CustomFlame(master=self.AntenaBG,gif_name="movingnew2",fg="transparent",gif_time=100,text="",X=20,Y=50,sizeX=38,sizeY=80,cornerradius=0)
         
-        self.Antenapic=CustomFlame(master=self.AntenaBG,gif_name="cute",fg="transparent",gif_time=100,text="",X=20,Y=50,sizeX=38,sizeY=80,cornerradius=0)
+        self.Antenapic=CustomFlame(master=self.AntenaBG,gif_name="cute",fg="transparent",gif_time=100,text="",X=32,Y=53,sizeX=38,sizeY=80,cornerradius=0)
         
-        self.Acupic=CustomFlame(master=self.AntenaBG,parent=self.Antenapic,image_name="PC.png",fg=AntenaBGcolor,text="",X=210,Y=70,sizeX=32,sizeY=50,cornerradius=0)
+        self.ObserbSettingBtm=CustomButton(master=self.AntenaBG,parent=self.Antenapic,hg="DarkSlateGray2",image_name="star.png",text="",sizeX=10,sizeY=17,X=-19,Y=-3,fg=AntenaBGcolor,cornerradius=0)
         
-        self.MyPCpic=CustomFlame(master=self.AGUIBG,image_name="PC.png",fg=AGUIBGcolor,text="",X=75,Y=60,sizeX=25,sizeY=60,cornerradius=0)#attributes('-alpha', 0.5)
+        self.Acupic=CustomFlame(master=self.AntenaBG,parent=self.Antenapic,image_name="PC.png",fg=AntenaBGcolor,text="",X=180,Y=70,sizeX=32,sizeY=50,cornerradius=0)
+        
+        self.MyPCpic=CustomFlame(master=self.AGUIBG,image_name="PC.png",fg=AGUIBGcolor,text="",X=87,Y=60,sizeX=25,sizeY=60,cornerradius=0)#attributes('-alpha', 0.5)
         
         #self.Antena2Acugif=CustomFlame(master=self.AntenaBG,parent=self.Antenapic,gif_name="orange",gif_time=50,fg=AntenaBGcolor,text="",X=100,Y=70,sizeX=30,sizeY=10,cornerradius=0)
         
