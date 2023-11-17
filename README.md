@@ -36,3 +36,5 @@ https://imagingsolution.net/program/python/tkinter/scale_trackbar/
 
 https://qiita.com/teahat/items/050b572aad0d1686370b
 
+https://tomosoft.jp/design/?p=41020
+
