@@ -24,7 +24,7 @@ class Start():
         ACU.setUpAsync2List(As=ACUbackend.serialComunicator(acu=ACU,sleepT=0.5))
         ACU.setUpAsync2List(As=ACUbackend.moveTEST(acu=ACU,sleepT=0.1))
         ACU.setUpAsync2List(As=ACUbackend.GPSManager(acu=ACU,sleepT=0.1,deviceName="Prolific",deviceType="GPS"))
-        ACU.setUpAsync2List(As=ACUbackend.setTime(acu=ACU,sleepT=0.25))
+        #ACU.setUpAsync2List(As=ACUbackend.setTime(acu=ACU,sleepT=0.25))
         #ACU.setUpAsync2List(As=ACUbackend.comMonitor(acu=ACU,sleepT=0.5))
         StartGUI.ApperGUI()
         StartGUI.LoopGui()

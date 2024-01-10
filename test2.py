@@ -1,49 +1,85 @@
-import tkinter as tk
+from tkinter import filedialog
+import unicodedata
 
-class Application(tk.Frame):
-    def __init__(self, master = None):
-        super().__init__(master)
 
-        self.master.title("Main")       # ウィンドウタイトル
-        self.master.geometry("300x200") # ウィンドウサイズ(幅x高さ)
+def ra_to_degrees(hours, minutes, seconds):
+    # 1時間 = 15度
+    degrees_per_hour = 15
 
-        # ボタンの作成
-        btn_modeless = tk.Button(
-            self.master, 
-            text = "Modeless dialog",   # ボタンの表示名
-            command = self.create_modeless_dialog    # クリックされたときに呼ばれるメソッド
-            )
-        btn_modeless.pack()
+    # 時間を度に変換
+    total_hours = hours + minutes / 60 + seconds / 3600
+    degrees = total_hours * degrees_per_hour
 
-        btn_modal = tk.Button(
-            self.master, 
-            text = "Modal dialog",      # ボタンの表示名
-            command = self.create_modal_dialog    # クリックされたときに呼ばれるメソッド
-            )
-        btn_modal.pack()
+    return degrees
 
-    def create_modeless_dialog(self):
-        '''モードレスダイアログボックスの作成'''
-        dlg_modeless = tk.Toplevel(self)
-        dlg_modeless.title("Modeless Dialog")   # ウィンドウタイトル
-        dlg_modeless.geometry("300x200")        # ウィンドウサイズ(幅x高さ)
+# 赤緯を度に変換する関数
+def dec_to_degrees(degrees, minutes, seconds, sign):
+    # 度数を度に変換
+    total_degrees = degrees + minutes / 60 + seconds / 3600
 
-    def create_modal_dialog(self):
-        '''モーダルダイアログボックスの作成'''
-        dlg_modal = tk.Toplevel(self)
-        dlg_modal.title("Modal Dialog") # ウィンドウタイトル
-        dlg_modal.geometry("300x200")   # ウィンドウサイズ(幅x高さ)
+    # 符号を考慮
+    if sign.lower() == 's' or sign.lower() == '-':
+        total_degrees *= -1
 
-        # モーダルにする設定
-        dlg_modal.grab_set()        # モーダルにする
-        dlg_modal.focus_set()       # フォーカスを新しいウィンドウをへ移す
-        dlg_modal.transient(self.master)   # タスクバーに表示しない
+    return total_degrees
 
-        # ダイアログが閉じられるまで待つ
-        app.wait_window(dlg_modal)  
-        print("ダイアログが閉じられた")
+def convertData2RaDec(text):
+    rightText=(normText.split('='))[1]
+    
+    
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = Application(master = root)
-    app.mainloop()
+filename = filedialog.askopenfilename(
+    title = "座標読み取り",
+    filetypes = [("テキストファイルオンリー", ".txt") ], # ファイルフィルタ
+    initialdir = "./" # 自分自身のディレクトリ
+    )
+print(filename)
+
+f = open(filename,'r')
+
+datalist = f.readlines()
+
+f.close()
+
+
+RaDecData=None
+hours=0
+minutes=0
+seconds=0
+
+degrees=0
+minutes=0
+seconds=0
+sign=""
+for data in datalist:#1h 13m 0.0760510177733309,N 24° 1' 2.045871885199233
+    normText=data.replace(' ', '')
+    normText=unicodedata.normalize('NFKC', normText)
+    print(normText.lower())
+    if normText.lower().find('ra,dec')>=0:
+        RaDecData=(normText.split('='))[1]
+        RaDecData=(RaDecData.split(','))
+        ra,dec=RaDecData[0],RaDecData[1]
+        rahourpos=ra.find('h')
+        raminutepos=ra.find('m')
+        Rahour=ra[0:rahourpos]
+        Raminute=ra[rahourpos+1:raminutepos]
+        Raseconds=ra[raminutepos+1:(len(ra)-1)]
+        RaDegrees=ra_to_degrees(int(Rahour),int(Raminute),float(Raseconds))
+        
+        decsign=ra[0]
+        decdegreepos=dec.find('#')
+        decminutepos=dec.find("'")
+        dechour=dec[1:decdegreepos]
+        decminute=dec[decdegreepos+1:decminutepos]
+        decseconds=dec[decminutepos+1:(len(dec)-1)]
+        decDegrees=dec_to_degrees(int(dechour), int(decminute), float(decseconds), decsign)
+        RaDecData[0]=RaDegrees
+        RaDecData[1]=decDegrees
+        break
+    
+
+print(RaDecData)
+
+# テキスト読み込みなどの処理文
+
+

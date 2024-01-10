@@ -1,19 +1,31 @@
 from skyfield.api import Topos, load, EarthSatellite,position_of_radec,wgs84,Star
 from datetime import timedelta
+import time
 
 
-planets = load('de421.bsp')                                  
+planets = load('de421.bsp')  
+
+start = time.time()  # 現在時刻（処理開始前）を取得
+
+                                
 earth, mars = planets['earth'], planets['mars']        
 site = planets['earth'] + wgs84.latlon(45, 5)
 
 
-      
+
+
 
 ts = load.timescale(builtin=True)
+
+end = time.time()  # 現在時刻（処理完了後）を取得
+time_diff = end - start  # 処理完了後の時刻から処理開始前の時刻を減算する
+print(time_diff)  # 処理にかかった時間データを使用
+
 t = ts.now()                                      # <===== ③
 t1=ts.now()+timedelta(seconds=0) 
 astrometric = earth.at(t).observe(mars)           # <===== ④
 ra, dec, distance = astrometric.radec()
+
 
 print(type(dec.degrees))
 
@@ -25,13 +37,15 @@ star = Star(ra_hours=ra.hours,dec_degrees=dec.degrees)
 astrometric = site.at(t).observe(star)
 apparent = astrometric.apparent()
 altaz = apparent.altaz()
-print (altaz)
-
+print (dec.degrees)
 star1 = Star(ra_hours=ra1.hours,dec_degrees=dec1.degrees)
 astrometric1 = site.at(t1).observe(star)
 apparent1 = astrometric1.apparent()
 altaz1 = apparent1.altaz()
 print (altaz1)
+
+
+
 
 #------------------------------------------------
 

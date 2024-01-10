@@ -7,8 +7,19 @@ import copy
 import math
 import os
 from customtkinter import filedialog
-
+import NormalizedConstValues
+from NormalizedConstValues import ButtonMode
 from PIL import Image,ImageTk
+
+import tkinter as tk
+import tkinter.messagebox as messagebox
+from tkinter import filedialog
+import unicodedata
+import copy
+import sys
+import tkinter.simpledialog as simpledialog
+import tkinter
+
 
 
 FONT_TYPE = "x14y24pxHeadUpDaisy"
@@ -105,6 +116,7 @@ class CustomBase(customtkinter.CTkFrame):
     def setDeath(self):
         if self.directBody is not None:
             self.directBody.destroy()
+            self.destroy()
     
     def load_gifFrames(self,path="hogehoge.gif"):#使わないが一応年の為、残しておく
         if isinstance(path, str):
@@ -597,6 +609,9 @@ class CustomButton(CustomBase):
     changeColor="gray"
     ButtomStats=False #Falseが選択されていないとき、Trueが選択されていると
     timermode=False
+    ButtonMode=ButtonMode.Normal
+    OtherButtons=None
+
     def setdisableColor(self):
         super(CustomButton,self).setdisableColor()
         if self.timermode:
@@ -608,6 +623,12 @@ class CustomButton(CustomBase):
     def setnormalColor(self):
         super(CustomButton,self).setnormalColor()
         self.directBody.configure(text_color=self.textcolor)
+        if self.ButtonMode is ButtonMode.Radio:
+            if self.OtherButtons is not None:
+                for btm in self.OtherButtons:
+                    if btm.getButtomMode() is ButtonMode.Radio:
+                        btm.setStats(stats=False,mode="OnlyColor")
+
     def setTextColor(self,event):
         if self.pussingButtomMode is True and self.text!="none":
             self.ButtomStats=not (self.ButtomStats)
@@ -624,6 +645,8 @@ class CustomButton(CustomBase):
         self.fg="#3B8ED0"
     def setColor(self,color="red"):
         self.directBody.configure(fg_color=color)
+    def setButtonMode(self,mode=ButtonMode.Normal):
+        self.ButtonMode=mode
     def selfUpdateValue(self,textcolor="white",fg="#3B8ED0",hg="red",com=None,cornerradius=10,bg="#3B8ED0"):
         if textcolor!="none":
             self.textcolor=textcolor
@@ -632,6 +655,11 @@ class CustomButton(CustomBase):
             self.com=com
         if self.is_integer_num(cornerradius):
             self.cornerradius=cornerradius
+    def updateOtherButtons(self,buttons=None):
+        self.OtherButtons=buttons
+    def getButtomMode(self):
+        return self.ButtonMode
+
     def UPDATEGUI(self):
         super(CustomButton,self).UPDATEGUI()
     def setGUI(self):
@@ -664,10 +692,11 @@ class CustomButton(CustomBase):
             self.directBody.bind("<Button-1>",self.setTextColor)
             self.directBody.bind("<Enter>",self.setTextColor)
             self.directBody.bind("<Leave>",self.setTextColor)
-    def __init__(self,master,gif_name="none",gif_time=1.1,carsol=False,putWindow=None,Timermode=False,pussingButtomMode=False,image_name="none", text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,textcolor="black",fg="gray50",hg="gray74",bg="none",com=None,cornerradius=10,bd_width=0,bd_color="none"):
+    def __init__(self,master,gif_name="none",buttonMode=ButtonMode.Normal,gif_time=1.1,carsol=False,putWindow=None,Timermode=False,pussingButtomMode=False,image_name="none", text="none_text",text_size=11,X=50,Y=50,sizeX=20,sizeY=20,parent=None,textcolor="black",fg="gray50",hg="gray74",bg="none",com=None,cornerradius=10,bd_width=0,bd_color="none"):
         super().__init__(master,carsol=carsol, putWindow=putWindow,text=text,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,parent=parent)
         self.pussingButtomMode=pussingButtomMode
         self.timermode=Timermode
+        self.ButtonMode=buttonMode
         self.selfUpdateValue(textcolor=textcolor,fg=fg,hg=hg,com=com,cornerradius=cornerradius,bg=bg)
         self.update_gui(text=text,gif_name=gif_name,gif_time=gif_time,image_name=image_name,text_size=text_size,X=X,Y=Y,sizeX=sizeX,sizeY=sizeY,bd_color=bd_color,bd_width=bd_width,bg=bg,fg=fg,textcolor=textcolor)
 
@@ -1686,6 +1715,7 @@ class ACU_GUI(customtkinter.CTk):
         
         return IS_SLAVE_MODE,IS_INDIVISUAL_MODE,STOW_IS_POS,STOW_IS_REL,STOW_IS_LOCK,AZ_IS_STBY,AZ_IS_PROG,AZ_IS_MAN,EL_IS_STBY,EL_IS_PROG,EL_IS_MAN
     
+#----When Annntena not Conected----------------#
     Acu2MypcDis=None
     def Setnotconect2Antenna(self):
         self.Antenapic.setStats(stats=False)
@@ -1701,7 +1731,10 @@ class ACU_GUI(customtkinter.CTk):
             self.STOW_POS_B.setStats(stats=False)
             self.STOW_LOCK_B.setStats(stats=False)
             self.STOW_REL_B.setStats(stats=False)
-        
+
+#----When Annntena not Conected END---------------#
+
+#----When Annntena Conected----------------#
     def Setconect2Antenna(self):
         self.Antenapic.setStats(stats=True)
         self.Acupic.setStats(stats=True)
@@ -1718,7 +1751,9 @@ class ACU_GUI(customtkinter.CTk):
             self.STOW_POS_B.setStats(stats=True)
             self.STOW_LOCK_B.setStats(stats=True)
             self.STOW_REL_B.setStats(stats=True)    
-            
+#----When Annntena Conected END----------------#
+
+#----When Annntena MOVING----------------#
     def SetAntennaMoving(self):
         self.Antenapic=CustomFlame(master=self.AntenaBG,gif_name="movingnew2",fg="transparent",gif_time=100,text="",X=20,Y=50,sizeX=38,sizeY=80,cornerradius=0)
         self.Acupic.setStats(stats=True)
@@ -1735,7 +1770,7 @@ class ACU_GUI(customtkinter.CTk):
             self.STOW_POS_B.setStats(stats=True)
             self.STOW_LOCK_B.setStats(stats=True)
             self.STOW_REL_B.setStats(stats=True)
-        
+#----When Annntena MOVING END----------------#
 
     def getMode(self):
         global IS_INDIVISUAL_MODE
@@ -1989,14 +2024,223 @@ class ACU_GUI(customtkinter.CTk):
         self.DISCONECT_BUTTOM=CustomButton(parent=self.CONECT_BUTTOM,putWindow=window,master=self,textcolor="DarkSlateGray2",text="DISCONECT",X=25,Y=210,sizeX=8,sizeY=5,cornerradius=0,text_size=20,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setDIsconectStats)
         self.DISCONECT_BUTTOM.setDisable()
 
-    #-----Relayted Install Program-----------------
+#-----Relayted StarInstall Program-----------------
+    StarFiles=[]
     
-    Files=[]
+    STAR_F=None
+    MercryBTM=None
+    VenusBtm=None
+    MoonBtm=None
+    MarsBtm=None
+    JupiterBtm=None
+    Saturn=None
+    InputFileBtm=None
+    TrashBtm=None
+    StarSelectWindow=None
+    IsFileInpted=False
+    InputFileDText=None
+    InputFileName="NONE"
     
+    def ra_to_degrees(self,hours, minutes, seconds):
+        # 1時間 = 15度
+        degrees_per_hour = 15
+
+        # 時間を度に変換
+        total_hours = hours + minutes / 60 + seconds / 3600
+        degrees = total_hours * degrees_per_hour
+        return degrees
+
+    # 赤緯を度に変換する関数
+    def dec_to_degrees(self,degrees, minutes, seconds, sign):
+        # 度数を度に変換
+        total_degrees = degrees + minutes / 60 + seconds / 3600
+
+        # 符号を考慮
+        if sign.lower() == 's' or sign.lower() == '-':
+            total_degrees *= -1
+        return total_degrees
     
+    def setTrashBtm(self):
+        bd="DarkSlateGray2"
+        if self.StarSelectWindow is not None and self.InputFileBtm is not None:
+            self.TrashBtm=CustomButton(parent=self.InputFileBtm,putWindow=self.StarSelectWindow,master=self,image_name="batu.png",text="",X=90,Y=10,sizeX=3,sizeY=3,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=2,bd_color=bd,com=self.disposeRaDecFile)
     
-    #-----Relayted Install Program-----------------
+    def disposeTrashBtm(self):
+        if isinstance(self.TrashBtm,CustomButton):
+            self.TrashBtm.setDeath()
+    
+    def disposeRaDecFile(self):
+        if self.IsFileInpted:
+            self.InputFileBtm.setButtonMode(mode=ButtonMode.Normal)
+            self.InputFileBtm.setStats(stats=False,mode="OnlyColor")
+            self.StarFiles.clear()
+            self.disposeTrashBtm()
+            self.IsFileInpted=False
+            self.InputFileBtm.update_gui(image_name="addfile.png")
+            self.InputFileDText.update_gui(text="no data")
+            #image_name="addfile.png"
+        pass
+    
+    def whenPushMercryBTM(self):
+        self.MercryBTM.setStats(stats=True)
+        self.setStar2File("mercry")
+        print(self.StarFiles)
+
+    def setStar2File(self,name):
+        if len(self.StarFiles)>0:
+            self.StarFiles.clear()
+        self.StarFiles.append(name)
+    
+    def whenPushInputFileBtmBTM(self):
+        #self.InputFileBtm.setStats(stats=True)
+        if self.IsFileInpted is False:            
+            filename = filedialog.askopenfilename(
+                title = "座標読み取り",
+                filetypes = [("テキストファイルオンリー", ".txt") ], # ファイルフィルタ
+                initialdir = "./" # 自分自身のディレクトリ
+            )
+            
+            datalist=None
+            if filename is not "":
+                f = open(filename,'r')
+                datalist = f.readlines()
+                f.close()
                 
+            if datalist is None:
+                return
+            
+            RaDecData=None
+            hours=0
+            minutes=0
+            seconds=0
+
+            degrees=0
+            minutes=0
+            seconds=0
+            sign=""
+            
+            try:
+                for data in datalist:#1h 13m 0.0760510177733309,N 24° 1' 2.045871885199233
+                    normText=data.replace(' ', '')
+                    normText=unicodedata.normalize('NFKC', normText)
+                    if normText.lower().find('ra,dec')>=0:
+                        RaDecData=(normText.split('='))[1]
+                        RaDecData=(RaDecData.split(','))
+                        ra,dec=RaDecData[0],RaDecData[1]
+                        rahourpos=ra.find('h')
+                        raminutepos=ra.find('m')
+                        Rahour=ra[0:rahourpos]
+                        Raminute=ra[rahourpos+1:raminutepos]
+                        Raseconds=ra[raminutepos+1:(len(ra)-1)]
+                        RaDegrees=self.ra_to_degrees(int(Rahour),int(Raminute),float(Raseconds))
+                        
+                        decsign=ra[0]
+                        decdegreepos=dec.find('#')
+                        decminutepos=dec.find("'")
+                        dechour=dec[1:decdegreepos]
+                        decminute=dec[decdegreepos+1:decminutepos]
+                        decseconds=dec[decminutepos+1:(len(dec)-1)]
+                        decDegrees=self.dec_to_degrees(int(dechour), int(decminute), float(decseconds), decsign)
+                        RaDecData[0]=RaDegrees
+                        RaDecData[1]=decDegrees
+                        break
+            except:
+                messagebox.showinfo('エラーだぜぇい!', "データが何かおかしいでぇい!座標のフォーマットはこんな感じでぇい\n1h 13m 0.0760510177733309,N 24# 1' 2.045871885199233")
+                pass
+            else:
+                if RaDecData is not None:
+                    self.IsFileInpted=True
+                    self.InputFileBtm.update_gui(image_name="radecfile.png")
+                    self.setTrashBtm()
+                    self.InputFileName=os.path.splitext(os.path.basename(filename))[0]
+                    self.InputFileDText.update_gui(text=self.InputFileName)
+                    self.StarFiles=copy.deepcopy(RaDecData) #変更行
+                    print(self.StarFiles)
+                else:
+                    messagebox.showinfo('ファイルに何も書かれていない', "そのファイルではない...")
+        else:
+            #ButtonMode.Radio
+            self.InputFileBtm.setButtonMode(mode=ButtonMode.Radio)
+            self.InputFileBtm.setStats(stats=True)
+            pass
+        
+    def whenPushVenusBTM(self):
+        self.VenusBtm.setStats(stats=True)
+        self.setStar2File("venus")
+    
+    def AppearObserbStarSettingWindow(self):
+        bd="DarkSlateGray2"
+        x,y=self.GetWindowPos()
+        #        window=CustomWindow(master=self,sizex=400,sizey=400,posx=x+1110,posy=y,isModal=True)
+
+        window=CustomWindow(master=self,sizex=400,sizey=400,posx=x+300,posy=y+100,isModal=True)
+        self.StarSelectWindow=window
+        filelen=len(self.StarFiles)
+        #ObserbStarSettingWindow
+        Text=CustomText(putWindow=window,master=self,text="SELECT STAR",text_size=30,X=10,Y=5,sizeX=20,sizeY=6)
+        Ifbstats=False
+        Mrbstats=False
+        Vebstats=False
+        Mobstats=False
+        Mabstats=False
+        Jptstats=False
+        Satstats=False
+        if filelen>0:
+            self.AppearObserStopButton()
+            if self.InputFileBtm is not None:
+                Ifbstats=self.InputFileBtm.getStats()
+            if self.MercryBTM is not None:
+                Mrbstats=self.MercryBTM.getStats()
+            if self.VenusBtm is not None:
+                Vebstats=self.VenusBtm.getStats()
+        
+        BtmSizeX=16
+        BtmSizeY=13
+        TextPosY=130
+        
+        if self.IsFileInpted is False:
+            self.InputFileBtm=CustomButton(parent=Text,buttonMode=ButtonMode.Normal,putWindow=window,master=self,image_name="addfile.png",text="",X=50,Y=250,sizeX=BtmSizeX,sizeY=BtmSizeY,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=2,bd_color=bd,com=self.whenPushInputFileBtmBTM)
+            self.InputFileDText=CustomText(putWindow=window,parent=self.InputFileBtm,master=self,text="No Data",text_size=15,X=60,Y=TextPosY,sizeX=20,sizeY=2)
+        else:
+            self.InputFileBtm=CustomButton(parent=Text,buttonMode=ButtonMode.Radio,putWindow=window,master=self,image_name="radecfile.png",text="",X=50,Y=250,sizeX=BtmSizeX,sizeY=BtmSizeY,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=2,bd_color=bd,com=self.whenPushInputFileBtmBTM)
+            self.InputFileDText=CustomText(putWindow=window,parent=self.InputFileBtm,master=self,text=self.InputFileName,text_size=15,X=60,Y=TextPosY,sizeX=20,sizeY=2)
+            self.setTrashBtm()
+            
+        self.MercryBTM=CustomButton(parent=Text,buttonMode=ButtonMode.Radio,putWindow=window,master=self,image_name="star.png",text="",X=170,Y=250,sizeX=BtmSizeX,sizeY=BtmSizeY,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=2,bd_color=bd,com=self.whenPushMercryBTM)
+        MercryBTMText=CustomText(putWindow=window,parent=self.MercryBTM,master=self,text="Mercry",text_size=15,X=60,Y=TextPosY,sizeX=20,sizeY=2)
+        
+        self.VenusBtm=CustomButton(parent=Text,buttonMode=ButtonMode.Radio,putWindow=window,master=self,image_name="star.png",text="",X=290,Y=250,sizeX=BtmSizeX,sizeY=BtmSizeY,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=2,bd_color=bd,com=self.whenPushVenusBTM)
+        VenusBTMText=CustomText(putWindow=window,parent=self.VenusBtm,master=self,text="Venus",text_size=15,X=60,Y=TextPosY,sizeX=20,sizeY=2)
+        
+        self.InputFileBtm.updateOtherButtons(buttons=[self.MercryBTM,self.VenusBtm])
+        self.InputFileBtm.setStats(stats=Ifbstats,mode="OnlyColor")
+        
+        self.MercryBTM.updateOtherButtons(buttons=[self.InputFileBtm,self.VenusBtm])
+        self.MercryBTM.setStats(stats=Mrbstats,mode="OnlyColor")
+        
+        
+        self.VenusBtm.updateOtherButtons(buttons=[self.InputFileBtm,self.MercryBTM])
+        self.VenusBtm.setStats(stats=Vebstats,mode="OnlyColor")
+#-----Relayted StarInstall Program-----------------
+     
+#-----Relayted ObserbingStop Program-----------------
+    ObserStopBtn=None
+    Pass=1234
+    
+    def ObserStop(self):
+        pswd=tkinter.simpledialog.askstring("観測終了", "観測を終了するには1234を入力")
+        if pswd=="1234":
+            messagebox.showinfo('パスワードOK', '観測を終了します。')
+            self.ObserStopBtn.setDeath()
+        else:
+            messagebox.showinfo('パスワードが間違っています', 'もう一度1234と入力して下さい')
+
+    def AppearObserStopButton(self):
+        self.ObserStopBtn=CustomButton(master=self,textcolor="red",text=">OBSERB STOP<",text_size=30,sizeY=5,sizeX=10,X=82,Y=3,fg=self.cget("fg_color"),bd_width=2,bd_color="red",cornerradius=0,com=self.ObserStop)
+        pass
+
+#-----Relayted ObserbingStop Program END-----------------
+     
     def GetWindowPos(self):
         text=self.geometry()
         array=text.split('+')
@@ -2021,12 +2265,10 @@ class ACU_GUI(customtkinter.CTk):
             self.setStowMode2Button()
         self.setControllMode2Button()
         
-        
-        
     TEST_BUTTON=None
         
     def set_mouce_position(self, event):
-        x, y = event.x, event.y     # x,y座標取得
+        x, y = event.x, event.y# x,y座標取得
         if self.SETTING_BUTTOM.CarsolisOn:
             self.TEST_BUTTON=CustomFlame(master=self,image_name="batu.png",text="",text_size=1,X=0,Y=0,sizeX=20,sizeY=20)
             self.TEST_BUTTON.directBody.place(x=x,y=y)
@@ -2037,7 +2279,7 @@ class ACU_GUI(customtkinter.CTk):
         
     
     
-    #--AdvancedGUI--
+#--AdvancedGUI--
 
     AGUIBG=None
     AGUISettingButtom=None
@@ -2060,9 +2302,9 @@ class ACU_GUI(customtkinter.CTk):
     
     InstallProgBtm=None
     
-    #--AdvancedGUI--
+#--AdvancedGUI--
         
-#----------------------------------------------------
+#---ApperGUI-----------------------------------
     def ApperGUI(self):
         global IS_INDIVISUAL_MODE
         global IS_SLAVE_MODE
@@ -2116,7 +2358,7 @@ class ACU_GUI(customtkinter.CTk):
         
         self.Antenapic=CustomFlame(master=self.AntenaBG,gif_name="cute",fg="transparent",gif_time=100,text="",X=32,Y=53,sizeX=38,sizeY=80,cornerradius=0)
         
-        self.ObserbSettingBtm=CustomButton(master=self.AntenaBG,parent=self.Antenapic,hg="DarkSlateGray2",image_name="star.png",text="",sizeX=10,sizeY=17,X=-19,Y=-3,fg=AntenaBGcolor,cornerradius=0)
+        self.ObserbSettingBtm=CustomButton(master=self.AntenaBG,parent=self.Antenapic,hg="DarkSlateGray2",image_name="star.png",text="",sizeX=10,sizeY=15,X=-17,Y=-3,fg=AntenaBGcolor,cornerradius=0,com=self.AppearObserbStarSettingWindow)
         
         self.Acupic=CustomFlame(master=self.AntenaBG,parent=self.Antenapic,image_name="PC.png",fg=AntenaBGcolor,text="",X=180,Y=70,sizeX=32,sizeY=50,cornerradius=0)
         
@@ -2135,10 +2377,7 @@ class ACU_GUI(customtkinter.CTk):
         
         self.UctTime_F = CustomButton(master=self,textcolor="DarkSlateGray2",Timermode=True,parent=self.LstTime_F,text=time.UTCformat,text_size=30,sizeY=5,sizeX=10,X=250,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="DarkSlateGray2",cornerradius=0)
         self.UctTime_F.setDisable()
-        
-        self.LOC_F=CustomButton(master=self,textcolor="DarkSlateGray2",Timermode=True,parent=self.UctTime_F,text="LOC:ふくいのどっか",text_size=30,sizeY=5,sizeX=10,X=250,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="DarkSlateGray2",cornerradius=0)
-        self.LOC_F.setDisable()
-        #self.UctTime_F.after(1000,self.updateTimer)  
+                #self.UctTime_F.after(1000,self.updateTimer)  
         #self.TEST_BUTTON=AnotherWIndowUIC(UI=None,Stats=True) 
         
         

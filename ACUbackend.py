@@ -18,7 +18,7 @@ import astropy as ASTRO
 import astropy.coordinates
 from astropy.units import deg
 from astropy.units import m
-from skyfield.api import Topos, load
+from skyfield.api import Topos, load, EarthSatellite,position_of_radec,wgs84,Star
 import pynmea2
 import ephem
 
@@ -440,6 +440,13 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
         self.isDeviceConected=True
         self.isSucccesConect=False
         self.setText2CommandLine(text=" Conected!")
+        
+    def Succces2ConectFunc(self):#接続が初めてできた時に呼ばれる
+        pass
+    
+    def disConectFunc(self):#接続が着れた時に呼ばれる
+        pass
+
 
     def setSuccces2Conect(self):
         self.isSucccesConect=True
@@ -479,22 +486,26 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
                     self.Serial=None
                 self.setText2CommandLine(text="TryConect")
                 self.Serial=serial.Serial(self.Port, self.Baudrate)
-                self.setSuccces2Conect()
             except (OSError, serial.SerialException):#切断されたときに呼ばれる
                 self.setFaild2Conect()
             except:
                 if isinstance(self.Serial,serial.Serial):
                     self.setText2CommandLine(text="ProgExept!")
                 pass
+            else:
+                self.setSuccces2Conect()
+                self.Succces2ConectFunc()
         if self.getConectStats():
             try:
                 self.SerialFunc()
             except (OSError, serial.SerialException):#切断されたときに呼ばれる
                 self.setDeviceDisconected()
+                self.disConectFunc()
             except:
                 if isinstance(self.Serial,serial.Serial):
                     self.setText2CommandLine(text="ProgExept!")
                 pass
+            
             
         self.sleep()
 
@@ -508,6 +519,13 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
         self.message=message
         self.master=ma
         super().__init__(acu)
+        
+class decodeDatafromAcu():
+    
+    def POSdata(self,data):
+        pass
+        
+    
     
 class AnntenaController(Serialcommunicator4GeneralUse):
     
@@ -521,12 +539,36 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     
     timeScale=None
     
+    planets=None
+    Site=None
+    Earth=None
+    TimeScale=None
+    
+    ReceivedData=None
+    
+    #----
+    
+    TRAP=False
+    
+    #----
     
     
-    def disconectSerial(self):
+    def Succces2ConectFunc(self):
+        super(AnntenaController,self).Succces2ConectFunc()
+        self.ACUmonitor.FrontEnd.Setconect2Antenna()
+        
+    def disconectSerial(self):#Setnotconect2Antenna
         super(AnntenaController,self).disconectSerial()
+        self.ACUmonitor.FrontEnd.Setnotconect2Antenna()
         self.setUped=False
         
+    def TryReadAnttenaPosition(self):#@8POS R2<cr><lf> read axes position A and B
+        if self.TRAP is False:
+            self.SerialWrite("@8POS R2<cr><lf>")
+            self.TRAP=true
+        if self.TRAP:
+            pass
+            
     def SerialWrite(self,code="@0BAU W9600<cr><lf>"):
         if self.Serial is not None:
             ASCII=code.encode('ascii')#上記のコマンドをアスキーに変換しています pythonではByte型にこの時点でなっています
@@ -544,7 +586,8 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     
     def setUpAntenna(self):
         if not self.setUped:
-            self.timeScale=load.timescale(builtin=True)
+            #self.timeScale=load.timescale(builtin=True)
+            pass
         else:
             pass
     
@@ -560,12 +603,74 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     def convertText2Rot(self,text="0"):
         pass
     
+    def convertDeg2Hex(self,angle):
+        '''
+        this is used to angle to sbca hex
+        '''
+        fixint=int(angle/0.005493164)
+        return hex(fixint)
     
+    def normNum(num,ren=2,value="9",normround=5):
+        find=num.find(".")
+        lengh=len(num)
+        okFlag=0
+        re=float(num)
+        if find!=-1:
+            for i in range(find+1,lengh-1):
+                if num[i] is value:
+                    okFlag+=1
+                else:
+                    break
+        if okFlag>=ren:
+            re=round(re)
+        else:
+            re=round(re,normround)
+        return re
     
+    def convertHex2Deg(sbca_value, bit_count=16, resolution=90.0):
+        """
+        Convert SBCA formatted value to angle.
+        """
+        hex_number = sbca_value  # 16進数として扱う文字列
+        decimal_value = int(hex_number, 16)
+        binary_number = bin(int(hex_number, 16))[2:].zfill(len(hex_number) * 4)  # 16進数を10進数に変換し、その後2進数に変換して0埋め
+        if binary_number[0]=="1":
+            decimal_value=(1 << (len(hex_number) * 4)) - decimal_value
+            decimal_value*=-1
+        normalized_value = decimal_value / 65535  # Normalize to [0, 1]
+        angle = normalized_value * resolution
+        return angle
+    
+    def updateAzEL(self):
+        Altaz=None
+        t=self.TimeScale.now()+timedelta(milliseconds=130) 
+        if self.ACUmodeManager.getRaDecMode():#True=Ra,Dec
+            ra, dec=self.ACUmodeManager.getRaDecValue()
+            star = Star(ra_hours=ra,dec_degrees=dec)
+            astrometric = self.Site.at(t).observe(star)
+            apparent = astrometric.apparent()
+            Altaz = apparent.altaz()
+        else:
+            planet=planets[self.ACUmodeManager.getRaDecValue()]  
+            astrometric = self.Earth.at(t).observe(planet)
+            apparent = astrometric.apparent()
+            Altaz = apparent.altaz()
+
+
+
+    '''
+        def Succces2ConectFunc(self):#接続が初めてできた時に呼ばれる
+            pass
+        
+        def disConectFunc(self):#接続が着れた時に呼ばれる
+            pass
+    '''
+    
+
     def SerialFunc(self):
         super(AnntenaController,self).SerialFunc()
         self.setUpAntenna()
-        data = self.Serial.readline().decode('utf-8') #or ascii
+        self.ReceivedData = self.Serial.readline().decode('utf-8') #or ascii
         if self.setUped:
             if self.ACUmodeManager.getControllMode:#SLAVE_MODE
                 #ここで0.1秒ごとの計算を行う
@@ -587,12 +692,13 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                 pass
         
         
-        
-        
-    
     def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none"):
         super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType)
         self.ACUmodeManager=ACUmonitorModeManager(acu=self.ACUmonitor)
+        self.planets = load('de421.bsp')
+        self.Earth=self.planets['earth']
+        self.Site=self.Earth+wgs84.latlon(45, 5)
+        self.TimeScale=load.timescale(builtin=True)
 
 
 class ACUmonitorModeManager():
@@ -615,7 +721,6 @@ class ACUmonitorModeManager():
     IS_USE_RADEC=True
     IS_USE_STARNAME=False
     
-
     ACU=None
     
     def update(self):
@@ -679,7 +784,7 @@ class GPSManager(Serialcommunicator4GeneralUse):
             time = msg.timestamp  # 時刻
             time = datetime.combine(datetime.today().date(), time)
 
-    
+
     def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none"):
         super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType)
         
