@@ -21,6 +21,8 @@ from astropy.units import m
 from skyfield.api import Topos, load, EarthSatellite,position_of_radec,wgs84,Star
 import pynmea2
 import ephem
+import unicodedata
+
 
 class RadDiffCalc():
     Coord1=None
@@ -524,6 +526,106 @@ class decodeDatafromAcu():
     
     def POSdata(self,data):
         pass
+    
+class ComClassBase():
+    __serialCodes={'cr':"\r",'lf':"\n",'ack':'<<0x06>>','Space':'<<x20>>','cr(acu)':'<<x0d>>'}
+    
+    __isMessageSended=False
+    
+    __isMustCheckMessage=False
+    
+    __isMessageReceived=False
+    
+    __mySendedMessage="none"
+    
+    __recivedMessageContents=None
+    
+    __messageIgnoreTimes=3#何回応答メッセージが届かなかったら次の処理に移るかの目安
+    
+    __ignoretime=0
+    
+    __serial=None
+    
+    __executeStop=False
+    
+    def executeCommand(self,command,isMustCheckMessage,ignoreTimes,getdata):
+        if self.__executeStop:
+            return
+        
+        self.__messageIgnoreTimes=ignoreTimes
+        self.__isMustCheckMessage=isMustCheckMessage
+        
+        if self.__ignoretime>=self.__messageIgnoreTimes or self.__isMessageReceived:
+            self.setStopExecute()
+            
+        if self.self.__ignoretime>0:
+            self.__isMessageSended=False
+
+        if self.__isMessageSended:#PCから送信済み
+            if self.__isMustCheckMessage:
+                if self.isIgnorePattern(getdata):#データが不十分過ぎたら
+                    self.__ignoretime+=1
+                else:
+                    self.checkMessage(getdata)#応答メッセージをチェックし、異常が無ければ
+                pass
+            else:
+                self.__isMessageSended=False
+                self.setStopExecute()
+        else:
+            self.__serialWrite(command)
+            self.__isMessageSended=True
+            self.__mySendedMessage=command
+
+            
+    def getReceivedMessageContents(self):
+        pass
+            
+    def checkMessage(self,message):#以上が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
+        pass
+    
+    def setStopExecute(self):
+        self.__executeStop=True
+        self.__ignoretime=0
+        self.__mySendedMessage="none"
+        self.__isMessageSended=False
+        self.__isMustCheckMessage=False
+        self.__isMessageReceived=False
+
+        
+    def setEnableExecute(self):
+        self.__executeStop=False
+        self.__recivedMessageContents=None
+        
+
+    def __normalizeCode(self,code):
+        return code
+    
+    def getSendedMessage(self):
+        return __mySendedMessage
+    
+    def isIgnorePattern(self,message):#子クラスでオーバーライド
+        pass
+    
+    def getnormSerialCode(self,serialcode="none"):
+        normCode=self.__normalizeCode(code)
+        return self.__serialCodes[normCode]
+    
+    def __serialWrite(self,code="@0BAU W9600"):
+        if self.__serial is not None:
+            code+=(self.SerialCodes['cr']+self.SerialCodes['lf'])
+            ASCII=code.encode('ascii')
+            self.__serial.write(ASCII)
+
+    def __init__(self,serial=None):
+        self.__serial=serial
+        
+class PositionCom(ComClassBase):
+    
+    def __init__(self,serial=None):
+        super().__init__(serial=serial)
+        self.__serial=serial
+
+        
         
     
     
@@ -547,11 +649,73 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     ReceivedData=None
     
     #----
-    
+    SerialCodes={'Cr':"\r",'Lf':"\n",'Ack':'<<0x06>>','Space':'<<x20>>','Cr(Acu)':'<<x0d>>'}
+    #TryReadAnttenaPosition↓
     TRAP=False
+    #TrunOnPed↓
+    TOP=False
+    #TrunOffPad↓
+    TOFP=True
+    #CheckI/O Port Stats
+    CIOPS=False
+    #check Axis Labels
+    CAL=False
+    #checkStatsSofyKey
+    CSSK=False
+    #checkAxisModeControl
+    TAMC=False
+    
+    #Read
     
     #----
     
+    
+    
+    def getData(self):
+        return self.ReceivedData
+    
+    def checkAxisLabels(self):
+        if self.TAMC:#PCから送信済み
+            pass
+            self.TAMC=False
+        else:
+            self.SerialWrite("@8MOD R3")
+            self.TAMC=True
+    
+    def checkAxisLabels(self):
+        if self.CSSK:#PCから送信済み
+            pass
+            self.CSSK=False
+        else:
+            self.SerialWrite("@0STA R40")
+            self.CSSK=True   
+    
+    def checkAxisLabels(self):
+        if self.CAL:#PCから送信済み
+            pass
+            self.CAL=False
+        else:
+            self.SerialWrite("@0LBL R3")
+            self.CAL=True   
+    
+    def checkIOportStats(self):
+        if self.CIOPS:#PCから確認済み
+            pass
+            self.CIOPS=False
+        else:
+            self.SerialWrite("@8DO R2")
+            self.CIOPS=True
+    
+    def setTrunOffPed(self):#ACUからの応答はなし?
+        self.SerialWrite("@8DO W0200")
+        self.TOFP=True
+        self.TOP=False
+    
+    def setTrunOnPed(self):#ACUからの応答はなし?
+        if self.TOFP:#電源が落ちてたら
+            self.SerialWrite("@8DO W0300")
+            self.TOFP=False
+            self.TOP=True
     
     def Succces2ConectFunc(self):
         super(AnntenaController,self).Succces2ConectFunc()
@@ -563,14 +727,17 @@ class AnntenaController(Serialcommunicator4GeneralUse):
         self.setUped=False
         
     def TryReadAnttenaPosition(self):#@8POS R2<cr><lf> read axes position A and B
-        if self.TRAP is False:
-            self.SerialWrite("@8POS R2<cr><lf>")
+        if self.TRAP is False:#まだ送信してないとき
+            self.SerialWrite("@8POS R2")
             self.TRAP=true
-        if self.TRAP:
+        if self.TRAP:#送信済みの場合、ここで解読する
             pass
+            self.TRAP=False
             
-    def SerialWrite(self,code="@0BAU W9600<cr><lf>"):
+            
+    def SerialWrite(self,code="@0BAU W9600"):
         if self.Serial is not None:
+            code+=(self.SerialCodes['Cr']+self.SerialCodes['Lf'])
             ASCII=code.encode('ascii')#上記のコマンドをアスキーに変換しています pythonではByte型にこの時点でなっています
             self.Serial.write(ASCII)
             
