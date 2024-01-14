@@ -426,6 +426,7 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
     Serial=None
     Port=none
     Baudrate=9600
+    serialInputter=None
     
     def getStringEqual(self,text1="none",text2="NONE"):
         return text1.casefold()==text2.casefold()
@@ -487,7 +488,9 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
                     self.Serial.close()
                     self.Serial=None
                 self.setText2CommandLine(text="TryConect")
-                self.Serial=serial.Serial(self.Port, self.Baudrate)
+                self.Serial=serial.Serial(self.Port, self.Baudrate,timeout=0.1)
+
+
             except (OSError, serial.SerialException):#切断されたときに呼ばれる
                 self.setFaild2Conect()
             except:
@@ -497,6 +500,8 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
             else:
                 self.setSuccces2Conect()
                 self.Succces2ConectFunc()
+                self.serialInputter.isSerialSet=True
+                self.serialInputter.Myserial=self.Serial
         if self.getConectStats():
             try:
                 self.SerialFunc()
@@ -505,21 +510,22 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
                 self.disConectFunc()
             except:
                 if isinstance(self.Serial,serial.Serial):
+                    self.setText2CommandLine(text="SerialWorong!")
+                else:
                     self.setText2CommandLine(text="ProgExept!")
                 pass
-            
-            
         self.sleep()
 
     def SerialFunc(self):
         pass
     
-    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none"):
+    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None):
         self.deviceName=deviceName
         self.deviceType=deviceType
         self.sleepTime=sleepT
         self.message=message
         self.master=ma
+        self.serialInputter=inputter
         super().__init__(acu)
         
 class decodeDatafromAcu():
@@ -528,7 +534,7 @@ class decodeDatafromAcu():
         pass
     
 class ComClassBase():
-    __serialCodes={'cr':"\r",'lf':"\n",'ack':'<<0x06>>','Space':'<<x20>>','cr(acu)':'<<x0d>>'}
+    __serialCodes={'cr':"\r",'lf':"\n",'ack':'<<0x06>>','Space':'<<x20>>','cr(acu)':'<<x0d>>','ignoreM':'@?'}
     
     __isMessageSended=False
     
@@ -547,6 +553,44 @@ class ComClassBase():
     __serial=None
     
     __executeStop=False
+
+    def convertDeg2Hex(self,angle):
+        '''
+        this is used to angle to sbca hex
+        '''
+        fixint=int(angle/0.005493164)
+        return hex(fixint)
+    
+    def normNum(num,ren=2,value="9",normround=5):
+        find=num.find(".")
+        lengh=len(num)
+        okFlag=0
+        re=float(num)
+        if find!=-1:
+            for i in range(find+1,lengh-1):
+                if num[i] is value:
+                    okFlag+=1
+                else:
+                    break
+        if okFlag>=ren:
+            re=round(re)
+        else:
+            re=round(re,normround)
+        return re
+    
+    def convertHex2Deg(sbca_value, bit_count=16, resolution=90.0):
+        """
+        Convert SBCA formatted value to angle.
+        """
+        hex_number = sbca_value  # 16進数として扱う文字列
+        decimal_value = int(hex_number, 16)
+        binary_number = bin(int(hex_number, 16))[2:].zfill(len(hex_number) * 4)  # 16進数を10進数に変換し、その後2進数に変換して0埋め
+        if binary_number[0]=="1":
+            decimal_value=(1 << (len(hex_number) * 4)) - decimal_value
+            decimal_value*=-1
+        normalized_value = decimal_value / 65535  # Normalize to [0, 1]
+        angle = normalized_value * resolution
+        return angle
     
     def executeCommand(self,command,isMustCheckMessage,ignoreTimes,getdata):
         if self.__executeStop:
@@ -558,13 +602,14 @@ class ComClassBase():
         if self.__ignoretime>=self.__messageIgnoreTimes or self.__isMessageReceived:
             self.setStopExecute()
             
-        if self.self.__ignoretime>0:
+        if self.__ignoretime>0:
             self.__isMessageSended=False
 
         if self.__isMessageSended:#PCから送信済み
             if self.__isMustCheckMessage:
                 if self.isIgnorePattern(getdata):#データが不十分過ぎたら
                     self.__ignoretime+=1
+                    print("データが不十分です"+getdata)
                 else:
                     self.checkMessage(getdata)#応答メッセージをチェックし、異常が無ければ
                 pass
@@ -576,7 +621,22 @@ class ComClassBase():
             self.__isMessageSended=True
             self.__mySendedMessage=command
 
-            
+    def setIsMessageReceived(self):
+        self.__isMessageReceived=True
+
+    def setMessageContents(self,text):
+        self.__recivedMessageContents=text
+        self.__isMessageReceived=True
+
+    def getTextDeleateStr(self,text,delstr):
+        return text.replace(delstr, '')
+    
+    def getSplitText(self,text,split_word=','):
+        return text.split(split_word)
+
+    def getContents(self):
+        return self.__recivedMessageContents
+
     def getReceivedMessageContents(self):
         pass
             
@@ -590,6 +650,7 @@ class ComClassBase():
         self.__isMessageSended=False
         self.__isMustCheckMessage=False
         self.__isMessageReceived=False
+        print("終了します")
 
         
     def setEnableExecute(self):
@@ -601,13 +662,13 @@ class ComClassBase():
         return code
     
     def getSendedMessage(self):
-        return __mySendedMessage
+        return self.__mySendedMessage
     
     def isIgnorePattern(self,message):#子クラスでオーバーライド
         pass
     
     def getnormSerialCode(self,serialcode="none"):
-        normCode=self.__normalizeCode(code)
+        normCode=self.__normalizeCode(serialcode)
         return self.__serialCodes[normCode]
     
     def __serialWrite(self,code="@0BAU W9600"):
@@ -618,6 +679,7 @@ class ComClassBase():
 
     def __init__(self,serial=None):
         self.__serial=serial
+        print("初期化完了")
         
 class PositionCom(ComClassBase):
     
@@ -625,10 +687,52 @@ class PositionCom(ComClassBase):
         super().__init__(serial=serial)
         self.__serial=serial
 
+    def isIgnorePattern(self,message):#子クラスでオーバーライド
+        super(PositionCom,self).isIgnorePattern(message)
+        ig=message.find(self.getnormSerialCode('ignoreM'))
+        ig=(ig==-1)
+        nothing=message is ""
+        return (ig or nothing)
+    
+    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
+        super(PositionCom,self).checkMessage(message)
+        InRpos=self.getSendedMessage().find("R")
+        isInR=InRpos is not -1
+        if isInR:
+            deleateInitial=self.getTextDeleateStr(test=message,delstr='@8')
+            howmany=int(self.getSendedMessage()[InRpos+1])
+            if howmany==1:
+                self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=deleateInitial,resolution=360)})
+            elif howmany==2:
+                AzEl=self.getSplitText(text=deleateInitial)
+                self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=AzEl[0],resolution=360),"El":self.convertHex2Deg(sbca_value=AzEl[1],resolution=90)})
+        
+    def getReceivedMessageContents(self):
+        super(PositionCom,self).getReceivedMessageContents()
+        return self.getContents()
+    
+
+    def __init__(self,serial=None):
+        super().__init__(serial=serial)
+        
+class AnntenaControllTest(Serialcommunicator4GeneralUse):
+
+    ReceivedData=None
+
+    def SerialFunc(self):
+        super(AnntenaControllTest,self).SerialFunc()
+        try:
+            data = self.Serial.readline().decode('utf-8')
+        except:
+            print("No DATA!")
+        else:
+            print(data)
         
         
-    
-    
+    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none"):
+        super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType)
+
+
 class AnntenaController(Serialcommunicator4GeneralUse):
     
     ACUmodeManager=None
@@ -646,29 +750,7 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     Earth=None
     TimeScale=None
     
-    ReceivedData=None
-    
-    #----
-    SerialCodes={'Cr':"\r",'Lf':"\n",'Ack':'<<0x06>>','Space':'<<x20>>','Cr(Acu)':'<<x0d>>'}
-    #TryReadAnttenaPosition↓
-    TRAP=False
-    #TrunOnPed↓
-    TOP=False
-    #TrunOffPad↓
-    TOFP=True
-    #CheckI/O Port Stats
-    CIOPS=False
-    #check Axis Labels
-    CAL=False
-    #checkStatsSofyKey
-    CSSK=False
-    #checkAxisModeControl
-    TAMC=False
-    
-    #Read
-    
-    #----
-    
+    ReceivedData="@?"
     
     
     def getData(self):
@@ -753,6 +835,7 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     
     def setUpAntenna(self):
         if not self.setUped:
+            self.setUped=True#TEST MODE
             #self.timeScale=load.timescale(builtin=True)
             pass
         else:
@@ -770,43 +853,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     def convertText2Rot(self,text="0"):
         pass
     
-    def convertDeg2Hex(self,angle):
-        '''
-        this is used to angle to sbca hex
-        '''
-        fixint=int(angle/0.005493164)
-        return hex(fixint)
-    
-    def normNum(num,ren=2,value="9",normround=5):
-        find=num.find(".")
-        lengh=len(num)
-        okFlag=0
-        re=float(num)
-        if find!=-1:
-            for i in range(find+1,lengh-1):
-                if num[i] is value:
-                    okFlag+=1
-                else:
-                    break
-        if okFlag>=ren:
-            re=round(re)
-        else:
-            re=round(re,normround)
-        return re
-    
-    def convertHex2Deg(sbca_value, bit_count=16, resolution=90.0):
-        """
-        Convert SBCA formatted value to angle.
-        """
-        hex_number = sbca_value  # 16進数として扱う文字列
-        decimal_value = int(hex_number, 16)
-        binary_number = bin(int(hex_number, 16))[2:].zfill(len(hex_number) * 4)  # 16進数を10進数に変換し、その後2進数に変換して0埋め
-        if binary_number[0]=="1":
-            decimal_value=(1 << (len(hex_number) * 4)) - decimal_value
-            decimal_value*=-1
-        normalized_value = decimal_value / 65535  # Normalize to [0, 1]
-        angle = normalized_value * resolution
-        return angle
     
     def updateAzEL(self):
         Altaz=None
@@ -818,27 +864,24 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             apparent = astrometric.apparent()
             Altaz = apparent.altaz()
         else:
-            planet=planets[self.ACUmodeManager.getRaDecValue()]  
+            planet=self.planets[self.ACUmodeManager.getRaDecValue()]  
             astrometric = self.Earth.at(t).observe(planet)
             apparent = astrometric.apparent()
             Altaz = apparent.altaz()
 
+    #---COMLIST------
 
+    position_com=None
 
-    '''
-        def Succces2ConectFunc(self):#接続が初めてできた時に呼ばれる
-            pass
-        
-        def disConectFunc(self):#接続が着れた時に呼ばれる
-            pass
-    '''
-    
+    #---COMLISTEND-----
 
     def SerialFunc(self):
         super(AnntenaController,self).SerialFunc()
         self.setUpAntenna()
-        self.ReceivedData = self.Serial.readline().decode('utf-8') #or ascii
         if self.setUped:
+            print("実行中")
+            self.position_com.executeCommand(command="@8POS R2",isMustCheckMessage=True,ignoreTimes=1,getdata=self.serialInputter.data)
+            '''
             if self.ACUmodeManager.getControllMode:#SLAVE_MODE
                 #ここで0.1秒ごとの計算を行う
                 if self.ACUmodeManager.getAzMode:#True=Prog
@@ -854,18 +897,43 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                     pass
                 else: #None=Stanby
                     pass
+            '''
                 
-            else:
-                pass
+           # else:
+                #pass
+        #self.ReceivedData = self.Serial.readline().decode('utf-8') #or ascii
         
         
-    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none"):
-        super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType)
+    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None):
+        super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType,inputter=inputter)
         self.ACUmodeManager=ACUmonitorModeManager(acu=self.ACUmonitor)
         self.planets = load('de421.bsp')
         self.Earth=self.planets['earth']
         self.Site=self.Earth+wgs84.latlon(45, 5)
         self.TimeScale=load.timescale(builtin=True)
+        self.position_com=PositionCom(serial=self.Serial)
+
+class InputRoopClass(AsyncedClass):
+
+    data=None
+
+    isSerialSet=False
+
+    Myserial=None
+
+    def Async(self):
+        if self.isSerialSet and self.Myserial is not None:
+            self.data = self.Myserial.readline().decode('utf-8')  # NMEAデータの読み込み
+            pass
+        else:
+            print("成功!")
+        self.sleep()
+
+    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
+        self.sleepTime=sleepT
+        self.message=message
+        self.master=ma
+        super().__init__(acu)
 
 
 class ACUmonitorModeManager():
@@ -899,7 +967,7 @@ class ACUmonitorModeManager():
     def getAzMode(self):#True=Prog,False=Manu,None=Stby
         re=None
         if self.AZ_IS_PROG:
-            re=true
+            re=True
         elif self.AZ_IS_MAN:
             re=False
         return re
@@ -907,7 +975,7 @@ class ACUmonitorModeManager():
     def getElMode(self):#True=Prog,False=Manu,None=Stby
         re=None
         if self.EL_IS_PROG:
-            re=true
+            re=True
         elif self.EL_IS_MAN:
             re=False
         return re
