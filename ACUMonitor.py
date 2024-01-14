@@ -21,9 +21,11 @@ class Start():
         ACU.BackEnd.ACU_Monitor=ACU
         ACU.FrontEnd.ACU_Monitor=ACU
         print(ACU.FrontEnd.NAME)
-        ACU.setUpAsync2List(As=ACUbackend.serialComunicator(acu=ACU,sleepT=0.5))
-        ACU.setUpAsync2List(As=ACUbackend.moveTEST(acu=ACU,sleepT=0.1))
-        ACU.setUpAsync2List(As=ACUbackend.GPSManager(acu=ACU,sleepT=0.1,deviceName="Prolific",deviceType="GPS"))
+        roop=ACUbackend.InputRoopClass(acu=ACU,sleepT=0.05)
+        ACU.setUpAsync2List(As=roop)
+        ACU.setUpAsync2List(As=ACUbackend.AnntenaController(acu=ACU,sleepT=0.1,deviceName="USB Serial Port",deviceType="ACU",inputter=roop))#InputRoopClass
+        #ACU.setUpAsync2List(As=ACUbackend.moveTEST(acu=ACU,sleepT=0.1))
+        #ACU.setUpAsync2List(As=ACUbackend.GPSManager(acu=ACU,sleepT=0.1,deviceName="Prolific",deviceType="GPS"))
         #ACU.setUpAsync2List(As=ACUbackend.setTime(acu=ACU,sleepT=0.25))
         #ACU.setUpAsync2List(As=ACUbackend.comMonitor(acu=ACU,sleepT=0.5))
         StartGUI.ApperGUI()
@@ -43,7 +45,3 @@ class ACU_Monitor():
         self.FrontEnd.setupAsync2List(As)
 
 app=Start()
-
-
-
-    
