@@ -1,4 +1,7 @@
 from skyfield.api import Angle
+from astropy.coordinates import SkyCoord, FK5
+from astropy import units as u
+
 
 def hms_string_to_angle(hms_string):
     # 文字列を' '（空白）で分割
@@ -22,7 +25,16 @@ def hms_string_to_angle(hms_string):
 
     return angle
 
-# テスト
-hms_string = "15h 09m 54.25s"
-angle = hms_string_to_angle(hms_string)
-print(angle)
+
+# J2000の赤道座標を指定
+coords = "12h34m56.7s +12d34m56.7s"
+
+# SkyCoordオブジェクトを作成し、度に変換
+coord = SkyCoord(coords, frame=FK5,unit="deg")
+ra_deg = coord.ra
+dec_deg = coord.dec
+
+# 結果の表示
+print(f"J2000 赤経: {ra_deg} 度")
+print(f"J2000 赤緯: {dec_deg} 度")
+

@@ -427,6 +427,13 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
     Port=none
     Baudrate=9600
     serialInputter=None
+    ControllMode="REAL"
+    
+    #--ANGENT
+    mode=True
+    timer=0
+    funcok=False
+    #--TEST--
     
     def getStringEqual(self,text1="none",text2="NONE"):
         return text1.casefold()==text2.casefold()
@@ -470,7 +477,27 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
 
 
     def Async(self):
-        if not self.getDeviceConectStats():
+        #-----IF TEST MODE FUNCTION--START---
+        if not self.mode and self.timer<=3:
+            self.timer+=sleepTime
+
+        if not self.mode and self.timer>=3 and not self.funcok:
+            self.setDeviceConected()
+            self.sleep()
+            self.sleep()
+            self.sleep()
+            self.sleep()
+            self.setText2CommandLine(text="TryConect")
+            
+            self.setSuccces2Conect()
+            self.Succces2ConectFunc()
+            self.serialInputter.isSerialSet=True
+            self.funcok=True
+        
+        if self.funcok:
+            self.SerialFunc()
+        #-----IF TEST MODE FUNCTION--END-----
+        if not self.getDeviceConectStats() and self.mode:
             ports=list_ports.comports()
             device=[info for info in ports if self.deviceName in info.description] #.descriptionでデバイスの名前を取得出来る
             if not len(device) == 0:
@@ -482,7 +509,7 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
                 else:
                     self.isDeviceConected=False
                     self.isSucccesConect=False
-        if self.isDeviceConected and not self.getConectStats():
+        if self.isDeviceConected and not self.getConectStats() and self.mode:
             try:
                 if isinstance(self.Serial,serial.Serial):
                     self.Serial.close()
@@ -502,7 +529,7 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
                 self.Succces2ConectFunc()
                 self.serialInputter.isSerialSet=True
                 self.serialInputter.Myserial=self.Serial
-        if self.getConectStats():
+        if self.getConectStats() and self.mode:
             try:
                 self.SerialFunc()
             except (OSError, serial.SerialException):#切断されたときに呼ばれる
@@ -519,19 +546,133 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
     def SerialFunc(self):
         pass
     
-    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None):
+    def __init__(self,mode="REAL",acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None):
         self.deviceName=deviceName
         self.deviceType=deviceType
         self.sleepTime=sleepT
         self.message=message
         self.master=ma
         self.serialInputter=inputter
+        self.ControllMode=mode
+        self.mode=mode is REAL
         super().__init__(acu)
         
-class decodeDatafromAcu():
+class AnntenaAgent():
+    '''
+    アンテナを模倣したクラス]
+    text.split(split_word)
+    text.replace(delstr, '')
+    time.sleep(float(self.sleepTime))
+    '''
+    Error="@8"
+    IsInitialServo=False
+    IsInitialACU=False
     
-    def POSdata(self,data):
-        pass
+    Result=""
+    
+    On=False
+    Off=True
+    
+    AzStats="1000"
+    ElStats="1000"
+    
+    AzRad="0000"
+    ElRad="0000"
+    
+    def SetInitialmode(self,text):
+        if text[0] is "@" and text[1] is "8":
+            self.IsInitialServo=True
+            self.IsInitialACU=False
+        elif text[0] is "@" and text[1] is "0":
+            self.IsInitialACU=True
+            self.IsInitialServo=False
+        else:
+            self.IsInitialServo=False
+            self.IsInitialACU=False
+
+    def deleateInitial(self,text,initial):
+        return text.replace(initial,'')
+
+    def splitSpace(self,text):
+        return text.split(" ")
+    
+    def splitText(self,text,sp):
+        return text.split(sp)
+    
+    def getAzStats(self):
+        re="standby"
+        if self.AzStats[3] is "3":
+            re="manual"
+        return re
+    
+    def getElStats(self):
+        re="standby"
+        if self.ElStats[3] is "3":
+            re="manual"
+        return re
+    
+    def setMessage(self,message):
+        re="@?"
+        if isinstance(message,byte):
+            normMessage=message.decode('ascii') #or ascii
+            self.SetInitialmode(normMessage)
+            if self.IsInitialACU:
+                initialdeleate=self.deleateInitial(text=normMessage,initial="@0")
+                split=self.splitSpace(initialdeleate)
+                if split[0] is "LBL":
+                    if split[1] is "R1":
+                        re="@0AZIMUTH"
+                    if split[1] is "R2":
+                        re="@0AZIMUTH,ELEVATION"
+                    if split[1] is "R3":
+                        re="@0AZIMUTH,ELEVATION,TILT"
+                if split[0] is "STA":
+                    if split[1] is "R40":
+                        re="@0"
+            elif self.IsInitialServo:
+                initialdeleate=self.deleateInitial(text=normMessage,initial="@8")
+                split=self.splitSpace(initialdeleate)
+                if split[0] is "DO":
+                    if split[1] is "W0300":
+                        re="@0"
+                        self.On=True
+                        self.Off=False
+                    if split[1] is "W0200":
+                        re="@0"
+                        self.On=False
+                        self.Off=True
+                    if split[1] is "R2":
+                        if self.On:
+                            re="@80300,0000"
+                        elif self.Off:
+                            re="@80200,0000"
+                if split[0] is "MOD" and self.On:
+                    if split[1] is "R1":
+                        re="@8"+self.AzStats
+                    if split[1] is "R2":
+                        re="@8"+self.AzStats+","+self.ElStats
+                    elif split[1].find("W")>=0:
+                        initialdeleate=self.deleateInitial(text=split[1],initial="W")
+                        split2=self.splitText(text=initialdeleate,sp=",")
+                        for i in range(0,len(split2)-1):
+                            if i==0:
+                                self.AzStats=split2[0]
+                            if i==1:
+                                self.ELStats=split2[1]
+                if split[0] is "POS"and self.On:
+                    if split[1] is "R1":
+                        re="@8"+self.AzRad
+                    elif split[1] is "R2":
+                        re="@8"+self.AzRad+","+self.ElRad
+                    elif split[1].find("W")>=0:
+                        initialdeleate=self.deleateInitial(text=split[1],initial="W")
+                        split2=self.splitText(text=initialdeleate,sp=",")
+                        for i in range(0,len(split2)-1):
+                            if i==0:
+                                self.AzRad=split2[0]
+                            if i==1:
+                                self.ElRad=split2[1]
+        self.Result=re.encode('ascii')
     
 class ComClassBase():
     __serialCodes={'cr':"\r",'lf':"\n",'ack':'<<0x06>>','Space':'<<x20>>','cr(acu)':'<<x0d>>','ignoreM':'@?'}
@@ -550,7 +691,7 @@ class ComClassBase():
     
     __ignoretime=0
     
-    __serial=None
+    __serialclass=None
     
     __executeStop=False
 
@@ -651,13 +792,11 @@ class ComClassBase():
         self.__isMustCheckMessage=False
         self.__isMessageReceived=False
         print("終了します")
-
-        
+   
     def setEnableExecute(self):
         self.__executeStop=False
         self.__recivedMessageContents=None
         
-
     def __normalizeCode(self,code):
         return code
     
@@ -672,15 +811,118 @@ class ComClassBase():
         return self.__serialCodes[normCode]
     
     def __serialWrite(self,code="@0BAU W9600"):
-        if self.__serial is not None:
+        if  isinstance(self.__serialclass,Serialcommunicator4GeneralUse):
             code+=(self.SerialCodes['cr']+self.SerialCodes['lf'])
-            ASCII=code.encode('ascii')
-            self.__serial.write(ASCII)
+            self.__serialclass.SerialWrite(code)
 
-    def __init__(self,serial=None):
-        self.__serial=serial
+    def __init__(self,serialclass=None):
+        self.__serialclass=serialclass
         print("初期化完了")
+
+class powerOnOffCom(ComClassBase):
+    def __init__(self,serial=None):
+        super().__init__(serial=serial)
+        self.__serial=serial
+
+    def isIgnorePattern(self,message):#子クラスでオーバーライド
+        super(powerOnOffCom,self).isIgnorePattern(message)
+        ig=message.find(self.getnormSerialCode('ignoreM'))
+        ig=(ig==-1)
+        nothing=message is ""
+        return (ig or nothing)
+    
+    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
+        super(powerOnOffCom,self).checkMessage(message)
+        In8=self.message.find("@8")
+        if In8>=0:
+            if self.getSendedMessage().find("0300")>=0:
+                self.setMessageContents(True)
+            if self.getSendedMessage().find("0200")>=0:
+                self.setMessageContents(False)
+
+    def getReceivedMessageContents(self):
+        super(powerOnOffCom,self).getReceivedMessageContents()
+        return self.getContents()
+
+class checkoutputCom(ComClassBase):
+    def __init__(self,serial=None):
+        super().__init__(serial=serial)
+        self.__serial=serial
+
+    def isIgnorePattern(self,message):#子クラスでオーバーライド
+        super(checkoutputCom,self).isIgnorePattern(message)
+        ig=message.find(self.getnormSerialCode('ignoreM'))
+        ig=(ig==-1)
+        nothing=message is ""
+        return (ig or nothing)
+    
+    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
+        super(checkoutputCom,self).checkMessage(message)
+        InRpos=self.getSendedMessage().find("R")
+        isInR=InRpos is not -1
+        if isInR:
+            deleateInitial=self.getTextDeleateStr(test=message,delstr='@8')
+            howmany=int(self.getSendedMessage()[InRpos+1])
+            if howmany==2:
+                AzEl=self.getSplitText(text=deleateInitial)
+                if AzEl[0] is "0300":
+                    self.setMessageContents(True)
+                elif AzEl[0] is "0200":
+                    self.setMessageContents(False)
+
+    def getReceivedMessageContents(self):
+        super(checkoutputCom,self).getReceivedMessageContents()
+        return self.getContents()
         
+class AxisModeCom(ComClassBase):
+    
+    bit_contents={"0-1-2":{"0":"stby","1":"rate","2":"SynSlave","3":"posMode"},"3":{"0":"Ifil","1":"Ⅱfil"}}
+    
+    def __init__(self,serial=None):
+        super().__init__(serial=serial)
+        
+    def isIgnorePattern(self,message):#子クラスでオーバーライド
+        super(AxisModeCom,self).isIgnorePattern(message)
+        ig=message.find(self.getnormSerialCode('ignoreM'))
+        ig=(ig==-1)
+        nothing=message is ""
+        return (ig or nothing)
+    
+    def getMessageContents(self,text):
+        text_len=len(text)
+        re=[]
+        for i in range(1,text_len):
+            if i==1:
+                re.append(self.bit_contents["0-1-2"][text[text_len-i]])
+            if i==2:
+                re.append(self.bit_contents["0-1-2"][text[text_len-i]])
+            if i==3:
+                re.append(self.bit_contents["0-1-2"][text[text_len-i]])
+            if i==4:
+                re.append(self.bit_contents["3"][text[text_len-i]])
+        return re
+            
+    
+    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
+        super(AxisModeCom,self).checkMessage(message)
+        InRpos=self.getSendedMessage().find("R")
+        isInR=InRpos is not -1
+        if isInR:
+            deleateInitial=self.getTextDeleateStr(test=message,delstr='@8')
+            howmany=int(self.getSendedMessage()[InRpos+1])
+            if howmany==1:
+                az=self.getMessageContents(deleateInitial)
+                self.setMessageContents({"Az":az})
+            elif howmany==2:
+                AzEl=self.getSplitText(text=deleateInitial)
+                az=self.getMessageContents(AzEl[0])
+                el=self.getMessageContents(AzEl[1])
+                self.setMessageContents({"Az":az,"El":el})
+        
+    def getReceivedMessageContents(self):
+        super(AxisModeCom,self).getReceivedMessageContents()
+        return self.getContents()
+
 class PositionCom(ComClassBase):
     
     def __init__(self,serial=None):
@@ -710,10 +952,6 @@ class PositionCom(ComClassBase):
     def getReceivedMessageContents(self):
         super(PositionCom,self).getReceivedMessageContents()
         return self.getContents()
-    
-
-    def __init__(self,serial=None):
-        super().__init__(serial=serial)
         
 class AnntenaControllTest(Serialcommunicator4GeneralUse):
 
@@ -752,52 +990,24 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     
     ReceivedData="@?"
     
+    #----------
+    ACUAgent=None
+    #----------
+    
+    #----
+    PowerOnOffCom=None
+    CheckOutPutCom=None
+    AxisModeCom=None
+    PositionCom=None
+    
+    IscheckPowerOn=False
+    PowerOn=False
+    IscheckManualMode=False
+    IsManualMode=False
+    #----
     
     def getData(self):
         return self.ReceivedData
-    
-    def checkAxisLabels(self):
-        if self.TAMC:#PCから送信済み
-            pass
-            self.TAMC=False
-        else:
-            self.SerialWrite("@8MOD R3")
-            self.TAMC=True
-    
-    def checkAxisLabels(self):
-        if self.CSSK:#PCから送信済み
-            pass
-            self.CSSK=False
-        else:
-            self.SerialWrite("@0STA R40")
-            self.CSSK=True   
-    
-    def checkAxisLabels(self):
-        if self.CAL:#PCから送信済み
-            pass
-            self.CAL=False
-        else:
-            self.SerialWrite("@0LBL R3")
-            self.CAL=True   
-    
-    def checkIOportStats(self):
-        if self.CIOPS:#PCから確認済み
-            pass
-            self.CIOPS=False
-        else:
-            self.SerialWrite("@8DO R2")
-            self.CIOPS=True
-    
-    def setTrunOffPed(self):#ACUからの応答はなし?
-        self.SerialWrite("@8DO W0200")
-        self.TOFP=True
-        self.TOP=False
-    
-    def setTrunOnPed(self):#ACUからの応答はなし?
-        if self.TOFP:#電源が落ちてたら
-            self.SerialWrite("@8DO W0300")
-            self.TOFP=False
-            self.TOP=True
     
     def Succces2ConectFunc(self):
         super(AnntenaController,self).Succces2ConectFunc()
@@ -816,13 +1026,7 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             pass
             self.TRAP=False
             
-            
-    def SerialWrite(self,code="@0BAU W9600"):
-        if self.Serial is not None:
-            code+=(self.SerialCodes['Cr']+self.SerialCodes['Lf'])
-            ASCII=code.encode('ascii')#上記のコマンドをアスキーに変換しています pythonではByte型にこの時点でなっています
-            self.Serial.write(ASCII)
-            
+                        
     def calculateAngles(self):
         ra=None
         dec=None
@@ -831,15 +1035,57 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             pass
         else:#星の名前
             pass
+    
+    def setPowerOn2GUI(self):
+        pass
             
     
     def setUpAntenna(self):
         if not self.setUped:
-            self.setUped=True#TEST MODE
-            #self.timeScale=load.timescale(builtin=True)
-            pass
-        else:
-            pass
+            if self.ControllMode is "TEST":
+                if self.IscheckPowerOn:
+                    if not self.CheckOutPutCom.getContents():
+                        self.PowerOnOffCom.executeCommand(command="@8DO W0300",isMustCheckMessage=False,ignoreTimes=0,getdata=self.serialInputter.data)
+                    else:
+                        self.PowerOn=True
+                        self.setText2CommandLine(text="AnntenaIsWorking")
+                else:
+                    self.IscheckPowerOn=True
+                    self.CheckOutPutCom.executeCommand(command="@8DO R2",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
+                if self.PowerOn:
+                    if self.IscheckManualMode:
+                        if not self.AxisModeCom.getContents()["Az"] is "1003" or not self.AxisModeCom.getContents()["El"] is "1003":
+                            self.AxisModeCom.executeCommand(command="@8MOD W1003,1003",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
+                            self.setText2CommandLine(text="AZ:"+self.AxisModeCom.getContents()["Az"]+"EL:"+self.AxisModeCom.getContents()["El"])
+                        else:
+                            self.IsManualMode=True
+                    elif not self.IscheckManualMode:
+                        self.IscheckManualMode=True
+                        self.AxisModeCom.executeCommand(command="@8MOD R2",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
+                if self.IsManualMode:
+                    self.setUped=True
+                    self.setText2CommandLine(text="AzElStandby")
+                    self.setPowerOn2GUI()
+            else:
+                if self.IscheckPowerOn:
+                    if not self.CheckOutPutCom.getContents():
+                        self.PowerOnOffCom.executeCommand(command="@8DO W0300",isMustCheckMessage=False,ignoreTimes=0,getdata=self.serialInputter.data)
+                    else:
+                        self.PowerOn=True
+                else:
+                    self.IscheckPowerOn=True
+                    self.CheckOutPutCom.executeCommand(command="@8DO R2",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
+                if self.PowerOn:
+                    if self.IscheckManualMode:
+                        if not self.AxisModeCom.getContents()["Az"] is "1003" or not self.AxisModeCom.getContents()["El"] is "1003":
+                            self.AxisModeCom.executeCommand(command="@8MOD W1003,1003",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
+                        else:
+                            self.IsManualMode=True
+                    elif not self.IscheckManualMode:
+                        self.IscheckManualMode=True
+                        self.AxisModeCom.executeCommand(command="@8MOD R2",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
+                if self.IsManualMode:
+                    self.setUped=True
     
     def setAzRot2Anttena(self,rot=0):
         pass
@@ -856,14 +1102,14 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     
     def updateAzEL(self):
         Altaz=None
-        t=self.TimeScale.now()+timedelta(milliseconds=130) 
+        t=self.TimeScale.now()+timedelta(milliseconds=150) 
         if self.ACUmodeManager.getRaDecMode():#True=Ra,Dec
             ra, dec=self.ACUmodeManager.getRaDecValue()
             star = Star(ra_hours=ra,dec_degrees=dec)
             astrometric = self.Site.at(t).observe(star)
             apparent = astrometric.apparent()
             Altaz = apparent.altaz()
-        else:
+        else:#StarMode
             planet=self.planets[self.ACUmodeManager.getRaDecValue()]  
             astrometric = self.Earth.at(t).observe(planet)
             apparent = astrometric.apparent()
@@ -903,15 +1149,28 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                 #pass
         #self.ReceivedData = self.Serial.readline().decode('utf-8') #or ascii
         
+    def SerialWrite(self,text):#isinstance(self.Serial,serial):
+        if self.Serial is not None and self.ControllMode is "REAL":
+            ASCII=text.encode('ascii')#上記のコマンドをアスキーに変換しています pythonではByte型にこの時点でなっています
+            self.Serial.write(ASCII)
+        else:
+            self.ACUAgent.setMessage(text.encode('ascii'))
+            
+    def readline(self):
+        return self.ACUAgent.Result
         
     def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None):
         super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType,inputter=inputter)
         self.ACUmodeManager=ACUmonitorModeManager(acu=self.ACUmonitor)
-        self.planets = load('de421.bsp')
+        self.planets = load('de421.bsp',force_download=False)
         self.Earth=self.planets['earth']
         self.Site=self.Earth+wgs84.latlon(45, 5)
         self.TimeScale=load.timescale(builtin=True)
-        self.position_com=PositionCom(serial=self.Serial)
+        self.PowerOnOffCom=powerOnOffCom(serialclass=self)
+        self.CheckOutPutCom=checkoutputCom(serialclass=self)
+        self.AxisModeCom=AxisModeCom(serialclass=self)
+        self.PositionCom=PositionCom(serialclass=self)
+        self.ACUAgent=AnntenaAgent()
 
 class InputRoopClass(AsyncedClass):
 
@@ -920,11 +1179,15 @@ class InputRoopClass(AsyncedClass):
     isSerialSet=False
 
     Myserial=None
+    
+    Mode="REAL" #or TEST
 
     def Async(self):
-        if self.isSerialSet and self.Myserial is not None:
-            self.data = self.Myserial.readline().decode('utf-8')  # NMEAデータの読み込み
+        if self.isSerialSet and isinstance(self.Myserial,serial):
+            self.data = self.Myserial.readline().decode('ascii')  
             pass
+        elif self.isSerialSet and isinstance(self.Myserial,AnntenaController):
+            self.data = self.Myserial.readline().decode('ascii')  
         else:
             print("成功!")
         self.sleep()
