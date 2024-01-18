@@ -10,16 +10,18 @@ from customtkinter import filedialog
 import NormalizedConstValues
 from NormalizedConstValues import ButtonMode
 from PIL import Image,ImageTk
-
+from NormalizedConstValues import Coordinate
 import tkinter as tk
 import tkinter.messagebox as messagebox
 from tkinter import filedialog
 import unicodedata
-import copy
 import sys
 import tkinter.simpledialog as simpledialog
 import tkinter
-
+from astropy.coordinates import SkyCoord, Galactic, ICRS,FK4,FK5
+import astropy.units as u
+from skyfield.api import load, Topos,wgs84
+import json
 
 
 FONT_TYPE = "x14y24pxHeadUpDaisy"
@@ -33,8 +35,8 @@ AZMIZTH_MAX=3600000
 AZMIZTH_MIN=0
 ANTENA_ELEVATION=900000
 ANTENA_ELEVATION_PROG=900000
-ELEVATION_STR="9 0. 0 0 0 0"
-ELEVATION_MAX=900000
+ELEVATION_STR="8 9. 0 0 0 0"
+ELEVATION_MAX=890000
 ELEVATION_MIN=0
 
 IS_SLAVE_MODE=False
@@ -1628,6 +1630,10 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.setELProg()
 
 class ACU_GUI(customtkinter.CTk):
+    
+    def __init__(self):
+        self.Timescale=load.timescale(builtin=True)
+        self.Planets=load('de421.bsp')
 #+++++++++++++++++++++++++++++++++++++
     ACU_Monitor=None
     NAME="TEST"
@@ -1731,7 +1737,6 @@ class ACU_GUI(customtkinter.CTk):
             self.STOW_POS_B.setStats(stats=False)
             self.STOW_LOCK_B.setStats(stats=False)
             self.STOW_REL_B.setStats(stats=False)
-
 #----When Annntena not Conected END---------------#
 
 #----When Annntena Conected----------------#
@@ -1912,7 +1917,6 @@ class ACU_GUI(customtkinter.CTk):
             if self.Mypc2AcuDis is not None:
                 self.Mypc2AcuDis.setDeath()
         
-
     def setIndivMode(self):
         self.setIndivModeFlag()
         self.setConectModeUI()
@@ -2024,6 +2028,7 @@ class ACU_GUI(customtkinter.CTk):
         self.DISCONECT_BUTTOM=CustomButton(parent=self.CONECT_BUTTOM,putWindow=window,master=self,textcolor="DarkSlateGray2",text="DISCONECT",X=25,Y=210,sizeX=8,sizeY=5,cornerradius=0,text_size=20,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setDIsconectStats)
         self.DISCONECT_BUTTOM.setDisable()
 
+
 #-----Relayted StarInstall Program-----------------
     StarFiles=[]
     
@@ -2041,24 +2046,9 @@ class ACU_GUI(customtkinter.CTk):
     InputFileDText=None
     InputFileName="NONE"
     
-    def ra_to_degrees(self,hours, minutes, seconds):
-        # 1時間 = 15度
-        degrees_per_hour = 15
-
-        # 時間を度に変換
-        total_hours = hours + minutes / 60 + seconds / 3600
-        degrees = total_hours * degrees_per_hour
-        return degrees
-
-    # 赤緯を度に変換する関数
-    def dec_to_degrees(self,degrees, minutes, seconds, sign):
-        # 度数を度に変換
-        total_degrees = degrees + minutes / 60 + seconds / 3600
-
-        # 符号を考慮
-        if sign.lower() == 's' or sign.lower() == '-':
-            total_degrees *= -1
-        return total_degrees
+    Timescale=None
+    Planets=None
+    
     
     def setTrashBtm(self):
         bd="DarkSlateGray2"
@@ -2083,90 +2073,181 @@ class ACU_GUI(customtkinter.CTk):
     
     def whenPushMercryBTM(self):
         self.MercryBTM.setStats(stats=True)
-        self.setStar2File("mercry")
-        print(self.StarFiles)
+        self.setPlanetRaDec(name="mercry")
+        
+    def whenPushVenusBTM(self):
+        self.VenusBtm.setStats(stats=True)
+        self.setPlanetRaDec(name="venus")
+        
+    def isincoord(self,dict):
+        ra=("ra" in dict)
+        dec=("dec" in dict)
+        L=("L" in dict)
+        B=("B" in dict)
 
-    def setStar2File(self,name):
-        if len(self.StarFiles)>0:
-            self.StarFiles.clear()
-        self.StarFiles.append(name)
+        Type=dict["coordtype"]
+        IsB1950=(Type=="B1950")
+        IsJ2000=(Type=="J2000")
+        IsGAL=(Type=="GAL")
+        re=False
+        if IsB1950 and(ra and dec):
+            re=Coordinate.B1950
+        elif IsJ2000 and(ra and dec):
+            re= Coordinate.J2000
+        elif IsGAL and(L and B):
+            re=Coordinate.GAL
+        return re
     
+    def convert_galactic_coordinates_to_degrees(self,l_str, b_str):
+        """
+        Convert Galactic coordinates in (ddd mm ss.s, +-dd mm ss.s) format to degrees.
+
+        Parameters:
+        - l_str: Galactic longitude string in (ddd mm ss.s) format.
+        - b_str: Galactic latitude string in (+-dd mm ss.s) format.
+
+        Returns:
+        - l_deg: Galactic longitude in degrees.
+        - b_deg: Galactic latitude in degrees.
+        """
+        # Convert Galactic coordinates strings to SkyCoord object
+        coords=l_str+" "+b_str
+        galactic_coordinates = SkyCoord(coords, unit=(u.deg, u.deg), frame=Galactic)
+
+        # Get Galactic longitude and latitude in degrees
+        l_deg = galactic_coordinates.l.degree
+        b_deg = galactic_coordinates.b.degree
+
+        return l_deg, b_deg
+
+    def convert_coordinates_to_degrees(self,ra_str, dec_str,mode):
+        """
+        Convert coordinates in (hh mm ss.s, +-dd mm ss.s) format to degrees.
+
+        Parameters:
+        - ra_str: Right ascension string in (hh mm ss.s) format.
+        - dec_str: Declination string in (+-dd mm ss.s) format.
+        - mode: MODE (1:J2000,2:B1950)
+
+        Returns:
+        - ra_deg: Right ascension in degrees.
+        - dec_deg: Declination in degrees.
+        """
+        # Convert RA and Dec strings to SkyCoord object
+        coords=ra_str+" "+dec_str
+        if mode is 1:
+            coordinates = SkyCoord(coords, frame=FK5,unit="deg")
+        elif mode is 2:
+            coordinates = SkyCoord(coords, frame=FK4,equinox='B1950',unit="deg")
+
+        # Get RA and Dec in degrees
+
+        return coordinates.ra.degree,coordinates.dec.degree
+    
+    def setDataFile(self,coorddata,IsStar=False):
+        if coorddata is not None:
+            if not IsStar:
+                self.IsFileInpted=True
+                self.InputFileBtm.update_gui(image_name="radecfile.png")
+                self.setTrashBtm()
+                self.InputFileName=os.path.splitext(os.path.basename(self.filename))[0]
+                self.InputFileDText.update_gui(text=self.InputFileName)
+            if len(self.StarFiles)>0:
+                self.StarFiles.clear()
+            self.StarFiles=copy.deepcopy(coorddata) #変更行
+
+    def setPlanetRaDec(self,name="sun"):
+        re={"star":None,"coordmode":None}
+        try:
+            planet=planets[name]
+        except:
+            messagebox.showinfo('エラー', "天体の名前が正しくないか、ソフトのデータベースに記録されていない天体です")
+        else:
+            re.update(star=name,coordmode=Coordinate.StarName)
+            self.setDataFile(re,True)
+    
+    filename=""
     def whenPushInputFileBtmBTM(self):
         #self.InputFileBtm.setStats(stats=True)
         if self.IsFileInpted is False:            
-            filename = filedialog.askopenfilename(
+            self.filename = filedialog.askopenfilename(
                 title = "座標読み取り",
-                filetypes = [("テキストファイルオンリー", ".txt") ], # ファイルフィルタ
+                filetypes = [("JSONファイルオンリー", ".json") ], # ファイルフィルタ
                 initialdir = "./" # 自分自身のディレクトリ
             )
             
+            formatSample=data = {"star": "unknown", "coordtype": "B1950", "ra": "08h12m30.0s", "dec": "+45d23m15.5s"}
+            output_string = f'{{"star":"{data["star"]}","coordtype":"{data["coordtype"]}","ra":"{data["ra"]}","dec":"{data["dec"]}"}}'
+
+
             datalist=None
-            if filename is not "":
-                f = open(filename,'r')
-                datalist = f.readlines()
+            if self.filename is not "":
+                #filename=os.path.splitext(os.path.basename(filename))[0]
+                #filename+".json"
+                f = open(self.filename, 'r',encoding='utf-8')
+                datalist = json.load(f)
+
+                #f = open(filename,'r')
+                #datalist = f.readlines()
                 f.close()
                 
             if datalist is None:
                 return
             
-            RaDecData=None
-            hours=0
-            minutes=0
-            seconds=0
+            star=""
+            if ("star" in datalist):
+                star=datalist["star"]
+            coord=self.isincoord(datalist)
+            dec1=0
+            dec2=0
+            #planets = load('de421.bsp')
+            #ts = load.timescale(builtin=True)
+            Coords={}
+            if isinstance(coord,Coordinate):
+                if coord is Coordinate.B1950:
+                    try:
+                        dec1,dec2=self.convert_coordinates_to_degrees(datalist["ra"],datalist["dec"],mode=2)
+                    except:
+                        import traceback
+                        traceback.print_exc()
 
-            degrees=0
-            minutes=0
-            seconds=0
-            sign=""
-            
-            try:
-                for data in datalist:#1h 13m 0.0760510177733309,N 24° 1' 2.045871885199233
-                    normText=data.replace(' ', '')
-                    normText=unicodedata.normalize('NFKC', normText)
-                    if normText.lower().find('ra,dec')>=0:
-                        RaDecData=(normText.split('='))[1]
-                        RaDecData=(RaDecData.split(','))
-                        ra,dec=RaDecData[0],RaDecData[1]
-                        rahourpos=ra.find('h')
-                        raminutepos=ra.find('m')
-                        Rahour=ra[0:rahourpos]
-                        Raminute=ra[rahourpos+1:raminutepos]
-                        Raseconds=ra[raminutepos+1:(len(ra)-1)]
-                        RaDegrees=self.ra_to_degrees(int(Rahour),int(Raminute),float(Raseconds))
-                        
-                        decsign=ra[0]
-                        decdegreepos=dec.find('#')
-                        decminutepos=dec.find("'")
-                        dechour=dec[1:decdegreepos]
-                        decminute=dec[decdegreepos+1:decminutepos]
-                        decseconds=dec[decminutepos+1:(len(dec)-1)]
-                        decDegrees=self.dec_to_degrees(int(dechour), int(decminute), float(decseconds), decsign)
-                        RaDecData[0]=RaDegrees
-                        RaDecData[1]=decDegrees
-                        break
-            except:
-                messagebox.showinfo('エラーだぜぇい!', "データが何かおかしいでぇい!座標のフォーマットはこんな感じでぇい\n1h 13m 0.0760510177733309,N 24# 1' 2.045871885199233")
-                pass
-            else:
-                if RaDecData is not None:
-                    self.IsFileInpted=True
-                    self.InputFileBtm.update_gui(image_name="radecfile.png")
-                    self.setTrashBtm()
-                    self.InputFileName=os.path.splitext(os.path.basename(filename))[0]
-                    self.InputFileDText.update_gui(text=self.InputFileName)
-                    self.StarFiles=copy.deepcopy(RaDecData) #変更行
-                    print(self.StarFiles)
+                        messagebox.showinfo('データエラー', "ファイル中のデータかフォーマットが間違っています。\n フォーマット例:"+output_string)
+                    else:
+                        b1950_coordinates = SkyCoord(ra=dec1*u.deg, dec=dec2*u.deg, frame=FK4, equinox='B1950')
+                        j2000_coordinates = b1950_coordinates.transform_to(FK5(equinox='J2000'))
+                        dec1=j2000_coordinates.ra.degree
+                        dec2=j2000_coordinates.dec.degree
+                        Coords.update(ra=dec1,dec=dec2,star=star,coordmode=Coordinate.J2000)
+                        self.setDataFile(Coords)
+                elif coord is Coordinate.J2000:
+                    try:
+                        dec1,dec2=self.convert_coordinates_to_degrees(datalist["ra"],datalist["dec"],mode=1)
+                    except:
+                        messagebox.showinfo('データエラー', "ファイル中のデータかフォーマットが間違っています。\n フォーマット例:"+output_string)
+                    else:
+                        Coords.update(ra=dec1.degree,dec=dec2.degree,star=star,coordmode=Coordinate.J2000)
+                        self.setDataFile(Coords)
                 else:
-                    messagebox.showinfo('ファイルに何も書かれていない', "そのファイルではない...")
+                    try:
+                        dec1,dec2=self.convert_galactic_coordinates_to_degrees(datalist["L"],datalist["B"])
+                        # 銀河座標系のSkyCoordオブジェクトを作成
+                    except:
+                        messagebox.showinfo('データエラー', "ファイル中のデータかフォーマットが間違っています。\n フォーマット例:"+output_string)
+                    else:
+                        galactic_coord = SkyCoord(l=dec1*u.degree, b=dec2*u.degree, frame=Galactic,unit="deg")
+                        # 銀河座標から赤道座標に変換
+                        icrs_coord = galactic_coord.transform_to(ICRS())
+                        dec1,dec2=icrs_coord.ra,icrs_coord.dec
+                        Coords.update(L=dec1,B=dec2,star=star,coordmode=Coordinate.J2000)
+                        self.setDataFile(Coords)
+            elif star is not "":
+                self.setPlanetRaDec(name=star)
+            else:
+                messagebox.showinfo('エラー', "ファイルに何も書かれていないか、データが間違っています")    
         else:
             #ButtonMode.Radio
             self.InputFileBtm.setButtonMode(mode=ButtonMode.Radio)
             self.InputFileBtm.setStats(stats=True)
-            pass
-        
-    def whenPushVenusBTM(self):
-        self.VenusBtm.setStats(stats=True)
-        self.setStar2File("venus")
     
     def AppearObserbStarSettingWindow(self):
         bd="DarkSlateGray2"
@@ -2238,7 +2319,6 @@ class ACU_GUI(customtkinter.CTk):
     def AppearObserStopButton(self):
         self.ObserStopBtn=CustomButton(master=self,textcolor="red",text=">OBSERB STOP<",text_size=30,sizeY=5,sizeX=10,X=82,Y=3,fg=self.cget("fg_color"),bd_width=2,bd_color="red",cornerradius=0,com=self.ObserStop)
         pass
-
 #-----Relayted ObserbingStop Program END-----------------
      
     def GetWindowPos(self):
@@ -2276,9 +2356,7 @@ class ACU_GUI(customtkinter.CTk):
             self.TEST_BUTTON.destroy()
         self.MOUCE_POS_X=x
         self.MOUCE_POS_Y=y
-        
-    
-    
+
 #--AdvancedGUI--
 
     AGUIBG=None
@@ -2301,7 +2379,6 @@ class ACU_GUI(customtkinter.CTk):
     ObserbSettingBtm=None
     
     InstallProgBtm=None
-    
 #--AdvancedGUI--
         
 #---ApperGUI-----------------------------------
