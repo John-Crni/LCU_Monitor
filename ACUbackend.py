@@ -22,6 +22,7 @@ from skyfield.api import Topos, load, EarthSatellite,position_of_radec,wgs84,Sta
 import pynmea2
 import ephem
 import unicodedata
+from NormalizedConstValues import CommandStats
 
 
 class RadDiffCalc():
@@ -342,38 +343,6 @@ class GIFexecuter(AsyncedClass):
         self.master=ma
         super().__init__(acu)
 
-'''
-class GIFManager(AsyncedClass):
-    _please_stop = False
-    path = path
-    label = label
-    duration = []  # フレーム表示間隔
-    frames = []  # 読み込んだGIFの画像フレーム
-    last_frame_index = None
-    
-    def Async(self):
-
-        self.sleep()
-    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
-        self.sleepTime=sleepT
-        self.message=message
-        self.master=ma
-        if isinstance(self.path, str):
-            img = Image.open(self.path)
-            frames = []
-        frame_index = 0
-        super().__init__(acu)
-    def load_frames1(self):
-        try:
-            while True:
-                frames.append(ImageTk.PhotoImage(img.copy()))
-                img.seek(frame_index)
-                frame_index += 1
-        except EOFError:
-            self.frames = frames
-            self.last_frame_index = frame_index - 1
-'''
-
 class setTime(AsyncedClass):
     ts=None
     t0=None
@@ -556,7 +525,144 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
         self.ControllMode=mode
         self.mode=mode is REAL
         super().__init__(acu)
+
+class AnntenaMovement(AsyncedClass):
+    
+    kp = 1.5  # 任意の値、調整が必要
+    ki = 0.0001  # 任意の値、調整が必要
+    kd = 0.01  # 任意の値、調整が必要
+    prev_error = 0
+    integral = 0
+    
+    
+    def Async(self):
+        if isinstance(self.Agent,AnntenaAgent):
+            if self.Agent.On:#getAzStats,posMode,rate
+                Azstats=self.Agent.getAzStats()
+                Elstats=self.Agent.getElStats()
+                if Azstats[2]=="posMode" or Azstats[2]=="rate":
+                    self.AzPID()
+                if Elstats[2]=="posMode" or Elstats[2]=="rate":
+                    self.ElPID()
+        self.sleep()
         
+    def AzPID(self):
+        dt = self.sleepTime
+        currentangle=self.convertHex2AzPos(self.Agent.AzRealRad)
+        target_angle=self.convertHex2AzPos(self.Agent.AzRad)
+        if abs(self.relative_angle(first_angle=currentangle, second_angle=target_angle))>0.01:
+            angular_velocity = self.calculate(currentangle, target_angle, dt)
+
+            # 角速度が制限範囲内に収める
+            angular_velocity = max(-45, min(45, angular_velocity))
+
+            currentangle=self.add_angle(original_angle=currentangle,add_angle=(angular_velocity * dt))
+            self.Agent.AzRealRad=self.convertDeg2Hex(currentangle)
+            print(f"Current Angle: {currentangle}",f"Current Velocity:{angular_velocity}")
+            #Diff=self.relative_angle(first_angle=current_angle, second_angle=target_angle)
+            
+    def ElPID(self):
+        dt = self.sleepTime
+        currentangle=self.convertHex2ElPos(self.Agent.ElRad)
+        target_angle=self.convertHex2ElPos(self.Agent.ElRealRad)
+        if abs(self.relative_angle(first_angle=currentangle, second_angle=target_angle))>0.01:
+            angular_velocity = self.calculate(currentangle, target_angle, dt)
+
+            # 角速度が制限範囲内に収める
+            angular_velocity = max(-45, min(45, angular_velocity))
+
+            currentangle=self.add_angle(original_angle=current_angle,add_angle=(angular_velocity * dt))
+                        
+            self.Agent.ElRealRad=self.convertDeg2Hex(currentangle)
+            print(f"Current Angle: {current_angle}",f"Current Velocity:{angular_velocity}")
+            #Diff=self.relative_angle(first_angle=current_angle, second_angle=target_angle)
+     
+    def convertDeg2Hex(self,angle):
+        '''
+        this is used to angle to sbca hex
+        '''
+        fixint=int(angle/0.005493164)
+        hexvalue=hex(fixint)
+        re=""
+        for i in range(2,len(hexvalue)):
+            re+=str(hexvalue[i])
+        return re
+
+    def convertHex2Deg(self,sbca_value, bit_count=16, resolution=360.0,mode=1):
+        """
+        Convert SBCA formatted value to angle.
+        """
+        hex_number = sbca_value  # 16進数として扱う文字列
+        decimal_value = int(hex_number, 16)
+        binary_number = bin(int(hex_number, 16))[2:].zfill(len(hex_number) * 4)  # 16進数を10進数に変換し、その後2進数に変換して0埋め
+        if binary_number[0]=="1" and mode==2:
+            decimal_value=(1 << (len(hex_number) * 4)) - decimal_value
+            decimal_value*=-1
+        normalized_value = decimal_value / 65535  # Normalize to [0, 1]
+        angle = normalized_value * resolution
+        return angle
+
+    def convertHex2AzPos(self,sbca_value):
+        return convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
+
+    def convertHex2ElPos(self,sbca_value):
+        return convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
+
+    def convertHex2Rate(self,sbca_value):
+        return convertHex2Deg(sbca_value=sbca_value,resolution=90.0,mode=2)
+
+        
+    def calculate(self, setpoint, current_value, dt):
+        error = self.relative_angle(current_value,setpoint)
+        self.integral += error * dt
+        derivative = (error - self.prev_error) / dt
+        output = self.kp * error + self.ki * self.integral + self.kd * derivative
+        self.prev_error = error
+        return output
+    
+    def relative_angle(self,first_angle, second_angle):
+        # 角度が範囲外の場合、正規化する
+        first_angle = first_angle % 360
+        second_angle = second_angle % 360
+
+        # 0°から見たときの相対角度を計算
+        relative_angle = second_angle - first_angle
+
+        # 結果が180°より大きい場合、-180°から180°の範囲に収める
+        if relative_angle > 180:
+            relative_angle -= 360
+        elif relative_angle < -180:
+            relative_angle += 360
+
+        return relative_angle
+    
+    def add_angle(self,original_angle,add_angle):
+        original_angle = original_angle % 360
+        add_angle = add_angle % 360
+        
+        angle=original_angle+add_angle
+        angle%=360
+        
+        if angle<0:
+            angle+=360
+            
+        return angle
+
+
+    
+    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
+        self.sleepTime=sleepT
+        self.message=message
+        self.master=ma
+        self.ts=load.timescale(builtin=True)
+        super().__init__(acu)
+
+    
+    def setAgent(self,Agentclass):
+        self.Agent=Agentclass
+
+    
+
 class AnntenaAgent():
     '''
     アンテナを模倣したクラス]
@@ -564,6 +670,8 @@ class AnntenaAgent():
     text.replace(delstr, '')
     time.sleep(float(self.sleepTime))
     '''
+    
+    bit_contents={"0-1-2":{"0":"stby","1":"rate","2":"SynSlave","3":"posMode"},"3":{"0":"Ifil","1":"Ⅱfil"}}
     Error="@8"
     IsInitialServo=False
     IsInitialACU=False
@@ -579,6 +687,43 @@ class AnntenaAgent():
     AzRad="0000"
     ElRad="0000"
     
+    AzRealRad="0000"
+    ElRadlRad="0000"
+    
+    AzRate="0000"
+    ElRate="0000"
+    
+    AzFistPos=0
+    ElFirstPos=0
+    
+    def __init__(self,Anntena):
+        if isinstance(Anntena,AnntenaMovement):
+            Anntena.setAgent(self)
+    
+    def getAzStats(self):
+        text_len=len(self.AzStats)
+        re=[]
+        for i in range(1,text_len-1):
+            if i==1:
+                re.append(self.bit_contents["0-1-2"][self.AzStats[text_len-i]])
+            if i==2:
+                re.append(self.bit_contents["0-1-2"][self.AzStats[text_len-i]])
+            if i==3:
+                re.append(self.bit_contents["0-1-2"][self.AzStats[text_len-i]])
+        return re
+    
+    def getElStats(self):
+        text_len=len(self.ElStats)
+        re=[]
+        for i in range(1,text_len-1):
+            if i==1:
+                re.append(self.bit_contents["0-1-2"][self.ElStats[text_len-i]])
+            if i==2:
+                re.append(self.bit_contents["0-1-2"][self.ElStats[text_len-i]])
+            if i==3:
+                re.append(self.bit_contents["0-1-2"][self.ElStats[text_len-i]])
+        return re
+            
     def SetInitialmode(self,text):
         if text[0] is "@" and text[1] is "8":
             self.IsInitialServo=True
@@ -659,11 +804,12 @@ class AnntenaAgent():
                                 self.AzStats=split2[0]
                             if i==1:
                                 self.ELStats=split2[1]
+                        re="@8"
                 if split[0] is "POS"and self.On:
                     if split[1] is "R1":
-                        re="@8"+self.AzRad
+                        re="@8"+self.AzRealRad
                     elif split[1] is "R2":
-                        re="@8"+self.AzRad+","+self.ElRad
+                        re="@8"+self.AzRealRad+","+self.ElRealRad
                     elif split[1].find("W")>=0:
                         initialdeleate=self.deleateInitial(text=split[1],initial="W")
                         split2=self.splitText(text=initialdeleate,sp=",")
@@ -672,6 +818,20 @@ class AnntenaAgent():
                                 self.AzRad=split2[0]
                             if i==1:
                                 self.ElRad=split2[1]
+                if split[0] is "RTE"and self.On:
+                    if split[1] is "R1":
+                        re="@8"+self.AzRate
+                    elif split[1] is "R2":
+                        re="@8"+self.AzRate+","+self.ElRate
+                    elif split[1].find("W")>=0:
+                        initialdeleate=self.deleateInitial(text=split[1],initial="W")
+                        split2=self.splitText(text=initialdeleate,sp=",")
+                        for i in range(0,len(split2)-1):
+                            if i==0:
+                                self.AzRad=split2[0]
+                            if i==1:
+                                self.ElRad=split2[1]
+
         self.Result=re.encode('ascii')
     
 class ComClassBase():
@@ -719,19 +879,29 @@ class ComClassBase():
             re=round(re,normround)
         return re
     
-    def convertHex2Deg(sbca_value, bit_count=16, resolution=90.0):
+    def convertHex2Deg(sbca_value, bit_count=16, resolution=90.0,mode=1):
         """
         Convert SBCA formatted value to angle.
         """
         hex_number = sbca_value  # 16進数として扱う文字列
         decimal_value = int(hex_number, 16)
         binary_number = bin(int(hex_number, 16))[2:].zfill(len(hex_number) * 4)  # 16進数を10進数に変換し、その後2進数に変換して0埋め
-        if binary_number[0]=="1":
+        if binary_number[0]=="1" and mode==2:
             decimal_value=(1 << (len(hex_number) * 4)) - decimal_value
             decimal_value*=-1
         normalized_value = decimal_value / 65535  # Normalize to [0, 1]
         angle = normalized_value * resolution
         return angle
+    
+    def convertHex2AzPos(sbca_value):
+        return convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
+
+    def convertHex2ElPos(sbca_value):
+        return convertHex2Deg(sbca_value=sbca_value,resolution=180.0,mode=1)
+
+    def convertHex2Pos(sbca_value):
+        return convertHex2Deg(sbca_value=sbca_value,resolution=90.0,mode=2)
+
     
     def executeCommand(self,command,isMustCheckMessage,ignoreTimes,getdata):
         if self.__executeStop:
@@ -902,7 +1072,6 @@ class AxisModeCom(ComClassBase):
                 re.append(self.bit_contents["3"][text[text_len-i]])
         return re
             
-    
     def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
         super(AxisModeCom,self).checkMessage(message)
         InRpos=self.getSendedMessage().find("R")
@@ -924,6 +1093,7 @@ class AxisModeCom(ComClassBase):
         return self.getContents()
 
 class PositionCom(ComClassBase):
+    
     
     def __init__(self,serial=None):
         super().__init__(serial=serial)
@@ -947,7 +1117,7 @@ class PositionCom(ComClassBase):
                 self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=deleateInitial,resolution=360)})
             elif howmany==2:
                 AzEl=self.getSplitText(text=deleateInitial)
-                self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=AzEl[0],resolution=360),"El":self.convertHex2Deg(sbca_value=AzEl[1],resolution=90)})
+                self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=AzEl[0],resolution=360),"El":self.convertHex2Deg(sbca_value=AzEl[1],resolution=360)})
         
     def getReceivedMessageContents(self):
         super(PositionCom,self).getReceivedMessageContents()
@@ -992,7 +1162,17 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     
     #----------
     ACUAgent=None
+    AnntenaMovement=None
     #----------
+    
+    #-----
+    AzMaxRot=360
+    AzMinRot=-360
+    ElMaxRot=89
+    ElMinRot=0
+    
+    AzRotSum=0
+    #-----
     
     #----
     PowerOnOffCom=None
@@ -1081,6 +1261,8 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                             self.AxisModeCom.executeCommand(command="@8MOD W1003,1003",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
                         else:
                             self.IsManualMode=True
+                            self.NowAzStats="1003"
+                            self.NowElStats="1003"
                     elif not self.IscheckManualMode:
                         self.IscheckManualMode=True
                         self.AxisModeCom.executeCommand(command="@8MOD R2",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
@@ -1099,54 +1281,140 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     def convertText2Rot(self,text="0"):
         pass
     
+    def getTimeNow(self):
+        return self.TimeScale.now()+timedelta(milliseconds=150) 
     
     def updateAzEL(self):
-        Altaz=None
-        t=self.TimeScale.now()+timedelta(milliseconds=150) 
-        if self.ACUmodeManager.getRaDecMode():#True=Ra,Dec
-            ra, dec=self.ACUmodeManager.getRaDecValue()
-            star = Star(ra_hours=ra,dec_degrees=dec)
-            astrometric = self.Site.at(t).observe(star)
-            apparent = astrometric.apparent()
-            Altaz = apparent.altaz()
-        else:#StarMode
-            planet=self.planets[self.ACUmodeManager.getRaDecValue()]  
-            astrometric = self.Earth.at(t).observe(planet)
-            apparent = astrometric.apparent()
-            Altaz = apparent.altaz()
+        coords=self.ACUmodeManager.getRaDecMode()
+        Az=0
+        El=0
+        if isinstance(coords,dict):
+            self.UpdateAzEL=True
+            mode=coords["coordmode"]
+            t=self.getTimeNow()
+            if mode is Coordinate.J2000:
+                star = Star(ra_hours=coords["ra"],dec_degrees=coords["dec"])
+                astrometric = self.Site.at(t).observe(star)
+                apparent = astrometric.apparent()
+                alt, az, distance = apparent.altaz()
+                Az=az.degrees
+                El=alt.degrees
+            if mode is Coordinate.StarName:
+                planet=planets[coords["star"]]
+                astrometric = self.Earth.at(t).observe(planet)           
+                ra, dec, distance = astrometric.radec()
+                star = Star(ra_hours=ra.hours,dec_degrees=dec.degrees)
+                astrometric = self.Site.at(t).observe(star)
+                apparent = astrometric.apparent()
+                alt, az, distance = apparent.altaz()
+                Az=az.degrees
+                El=alt.degrees
+        return Az,El
+
+
+    def getAngleDiff(self,first_angle,second_angle):
+        # 角度が範囲外の場合、正規化する
+        first_angle = first_angle % 360
+        second_angle = second_angle % 360
+        # 0°から見たときの相対角度を計算
+        relative_angle = second_angle - first_angle
+        # 結果が180°より大きい場合、-180°から180°の範囲に収める
+        if relative_angle > 180:
+            relative_angle -= 360
+        elif relative_angle < -180:
+            relative_angle += 360
+        return relative_angle
+
+
+    def convertDeg2Hex(self,angle):
+        '''
+        this is used to angle to sbca hex
+        '''
+        fixint=int(angle/0.005493164)
+        hexvalue=hex(fixint)
+        re=""
+        for i in range(2,len(hexvalue)):
+            re+=str(hexvalue[i])
+        return re
+    
+    def updateMonitor(self,AzEL,pAz,pEl,spAz,spEl,dAz,dEl):
+        self.ACUmodeManager.setAzReal2Monitor(rot=AzEl["Az"])
+        self.ACUmodeManager.setElReal2Monitor(rot=AzEl["El"])
+        self.ACUmodeManager.setElSpeed2Monitor(speed=spEl)
+        self.ACUmodeManager.setElProg2Monitor(rot=pEl)
+        self.ACUmodeManager.setAzSpeed2Monitor(speed=spAz)
+        self.ACUmodeManager.setAzProg2Monitor(rot=pAz)
+        self.ACUmodeManager.setAzDiff2Monitor(rot=dAz)
+        self.ACUmodeManager.setElDiff2Monitor(rot=dEl)
 
     #---COMLIST------
 
-    position_com=None
+    
 
     #---COMLISTEND-----
-
+    
+    BefAzEl={"Az":0,"El":0}
+    AzEl={"Az":0,"El":0}
+    
+    AxisCommandstats=CommandStats.UpdateAxis
+    PrevAxisCommandstats=CommandStats.UpdateAxis
+    
+    AzSpeed=0
+    ElSpeed=0
+    
+    NowAzStats="1000"
+    NowElStats="1000"
+    def changeAxisCommandstats(self,flag=True):
+        if flag:
+            AxisCommandstats=CommandStats.UpdateAxis
+        else:
+            AxisCommandstats=CommandStats.ReadAxis
+                
+    
     def SerialFunc(self):
         super(AnntenaController,self).SerialFunc()
         self.setUpAntenna()
+        self.ACUmodeManager.update()
         if self.setUped:
-            print("実行中")
-            self.position_com.executeCommand(command="@8POS R2",isMustCheckMessage=True,ignoreTimes=1,getdata=self.serialInputter.data)
-            '''
-            if self.ACUmodeManager.getControllMode:#SLAVE_MODE
+            #print("実行中")
+            if self.AxisCommandstats is CommandStats.UpdateAxis and self.PrevAxisCommandstats is CommandStats.ReadAxis:
+                azel=self.PositionCom.getReceivedMessageContents()
+                self.AzEl.update(Az=azel["Az"],El=azel["El"])
+                self.AzSpeed=self.getAngleDiff(first_angle=self.BefAzEl["Az"],second_angle=self.AzEl["Az"])*(1/self.sleepTime)
+                self.ElSpeed=self.getAngleDiff(first_angle=self.BefAzEl["El"],second_angle=self.AzEl["El"])*(1/self.sleepTime)
+            
+            if self.ACUmodeManager.getControllMod():#SLAVE_MODE
+                Azp,Elp=self.updateAzEL()
+                AzDiff=self.getAngleDiff(first_angle=self.AzEl["Az"],second_angle=Azp)
+                ElDiff=self.getAngleDiff(first_angle=self.AzEl["El"],second_angle=Elp)
+
                 #ここで0.1秒ごとの計算を行う
-                if self.ACUmodeManager.getAzMode:#True=Prog
+                if self.ACUmodeManager.getAzMode():#True=Prog
                     pass
-                elif self.ACUmodeManager.getAzMode is False:#False=Manual
-                    pass
-                else: #None=Stanby
-                    pass
-                
-                if self.ACUmodeManager.getElMode:#True=Prog
-                    pass
-                elif self.ACUmodeManager.getElMode is False:#False=Manual
+                elif self.ACUmodeManager.getAzMode() is False:#False=Manual
                     pass
                 else: #None=Stanby
+                    self.AxisModeCom.executeCommand(command="@8MOD W",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
                     pass
-            '''
                 
-           # else:
-                #pass
+                if self.ACUmodeManager.getElMode():#True=Prog
+                    pass
+                elif self.ACUmodeManager.getElMode() is False:#False=Manual
+                    pass
+                else: #None=Stanby
+                    pass 
+                self.updateMonitor(AzEL=self.AzEl,pAz=Azp,pEl=Elp,spAz=self.AzSpeed,spEl=self.ElSpeed,dAz=AzDiff,dEl=ElDiff)
+            else:
+                self.updateMonitor(AzEL=self.AzEl,pAz=0,pEl=0,spAz=0,spEl=0,dAz=0,dEl=0)
+        
+        self.PrevAxisCommandstats=self.AxisCommandstats
+        if self.AxisCommandstats is CommandStats.UpdateAxis:
+            self.changeAxisCommandstats(flag=False)
+            self.PositionCom.executeCommand(command="@8POS W",isMustCheckMessage=True,ignoreTimes=1,getdata=self.serialInputter.data)
+        elif self.AxisCommandstats is CommandStats.ReadAxis:
+            self.changeAxisCommandstats(flag=True)
+            self.PositionCom.executeCommand(command="@8POS R2",isMustCheckMessage=True,ignoreTimes=1,getdata=self.serialInputter.data)
+        self.BefAzEl.update(Az=self.AzEl["Az"],El=self.AzEl["El"])
         #self.ReceivedData = self.Serial.readline().decode('utf-8') #or ascii
         
     def SerialWrite(self,text):#isinstance(self.Serial,serial):
@@ -1159,7 +1427,7 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     def readline(self):
         return self.ACUAgent.Result
         
-    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None):
+    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None,movent=None):
         super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType,inputter=inputter)
         self.ACUmodeManager=ACUmonitorModeManager(acu=self.ACUmonitor)
         self.planets = load('de421.bsp',force_download=False)
@@ -1170,7 +1438,8 @@ class AnntenaController(Serialcommunicator4GeneralUse):
         self.CheckOutPutCom=checkoutputCom(serialclass=self)
         self.AxisModeCom=AxisModeCom(serialclass=self)
         self.PositionCom=PositionCom(serialclass=self)
-        self.ACUAgent=AnntenaAgent()
+        self.ACUAgent=AnntenaAgent(movent)
+
 
 class InputRoopClass(AsyncedClass):
 
@@ -1221,11 +1490,40 @@ class ACUmonitorModeManager():
     
     ACU=None
     
+    def setAzProg2Monitor(self,rot):
+        pass
+    
+    def setAzReal2Monitor(self,rot):
+        pass
+
+    def setAzDiff2Monitor(self,rot):
+        pass
+    
+    def setAzSpeed2Monitor(self,speed):
+        pass
+    
+    def setElProg2Monitor(self,rot):
+        pass
+    
+    def setElReal2Monitor(self,rot):
+        pass
+
+    def setElDiff2Monitor(self,rot):
+        pass
+    
+    def setElSpeed2Monitor(self,speed):
+        pass
+
+    
     def update(self):
         self.IS_SLAVE_MODE,self.IS_INDIVISUAL_MODE,self.STOW_IS_POS,self.STOW_IS_REL,self.STOW_IS_LOCK,self.AZ_IS_STBY,self.AZ_IS_PROG,self.AZ_IS_MAN,self.EL_IS_STBY,self.EL_IS_PROG,self.EL_IS_MAN=self.ACU.FrontEnd.getStats()
     
     def getControllMode(self):#True=SLAVE,False=INDIVISUAL
         return self.IS_SLAVE_MODE
+    
+
+    
+    
     
     def getAzMode(self):#True=Prog,False=Manu,None=Stby
         re=None
@@ -1244,7 +1542,7 @@ class ACUmonitorModeManager():
         return re
     
     def getRaDecMode(self):#True=Ra,Dec,False=StarName
-        return self.IS_USE_RADEC
+        return self.ACU.FrontEnd.StarFiles
     
     def getRaDecValue(self):#Ra,Dec is [ra],[dec],Starmode="mars"
         pass

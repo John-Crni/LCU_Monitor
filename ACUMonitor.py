@@ -21,9 +21,9 @@ class Start():
         ACU.BackEnd.ACU_Monitor=ACU
         ACU.FrontEnd.ACU_Monitor=ACU
         print(ACU.FrontEnd.NAME)
-        roop=ACUbackend.InputRoopClass(acu=ACU,sleepT=0.05)
-        ACU.setUpAsync2List(As=roop)
-        ACU.setUpAsync2List(As=ACUbackend.AnntenaController(acu=ACU,sleepT=0.1,deviceName="USB Serial Port",deviceType="ACU",inputter=roop))#InputRoopClass
+        #roop=ACUbackend.InputRoopClass(acu=ACU,sleepT=0.05)
+        #ACU.setUpAsync2List(As=roop)
+        #"ACU.setUpAsync2List(As=ACUbackend.AnntenaController(acu=ACU,sleepT=0.1,deviceName="USB Serial Port",deviceType="ACU",inputter=roop))#InputRoopClass
         #ACU.setUpAsync2List(As=ACUbackend.moveTEST(acu=ACU,sleepT=0.1))
         #ACU.setUpAsync2List(As=ACUbackend.GPSManager(acu=ACU,sleepT=0.1,deviceName="Prolific",deviceType="GPS"))
         #ACU.setUpAsync2List(As=ACUbackend.setTime(acu=ACU,sleepT=0.25))
