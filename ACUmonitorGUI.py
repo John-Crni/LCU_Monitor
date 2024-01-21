@@ -7,10 +7,8 @@ import copy
 import math
 import os
 from customtkinter import filedialog
-import NormalizedConstValues
-from NormalizedConstValues import ButtonMode
+from NormalizedConstValues import ButtonMode,AxisMode,CommandMode,Coordinate,ACUControlMode,StowMode
 from PIL import Image,ImageTk
-from NormalizedConstValues import Coordinate
 import tkinter as tk
 import tkinter.messagebox as messagebox
 from tkinter import filedialog
@@ -32,7 +30,7 @@ ANTTENA_AZMIZTH=3600000
 ANTTENA_AZMIZTH_PROG=3600000
 AZMIZTH_STR="3 6 0. 0 0 0 0"
 AZMIZTH_MAX=3600000
-AZMIZTH_MIN=0
+AZMIZTH_MIN=-3600000
 ANTENA_ELEVATION=900000
 ANTENA_ELEVATION_PROG=900000
 ELEVATION_STR="8 9. 0 0 0 0"
@@ -41,6 +39,12 @@ ELEVATION_MIN=0
 
 IS_SLAVE_MODE=False
 IS_INDIVISUAL_MODE=True
+
+AZ_MODE=AxisMode.Prog
+EL_MODE=AxisMode.Prog
+
+CONTROL_MODE=ACUControlMode.Slave
+STOW_MODE=StowMode.NONE
 
 STOW_IS_POS=False
 STOW_IS_REL=False
@@ -974,6 +978,8 @@ class LCU_Controller(customtkinter.CTkFrame):
     Az_MODE_F=None
     Az_MODE_PROG_B=None
     Az_MODE_MANU_B=None
+    Az_MODE_MANU_SET_B=None
+    Az_MODE_MANU_STOP_B=None
     Az_MODE_STBY_B=None
     
     Az_Limit_F=None
@@ -1026,6 +1032,8 @@ class LCU_Controller(customtkinter.CTkFrame):
     EL_MODE_F=None
     EL_MODE_PROG_B=None
     EL_MODE_MANU_B=None
+    EL_MODE_MANU_SET_B=None
+    EL_MODE_MANU_STOP_B=None
     EL_MODE_STBY_B=None
     EL_LEVEL_V_F=None
     
@@ -1429,20 +1437,41 @@ class LCU_Controller(customtkinter.CTkFrame):
             self.Az_LEVEL_V01_F.setDisable()
             self.Az_LEVEL_V01M_F.setDisable()
 
+    '''
+    AZ_MODE=AxisMode.Prog
+    EL_MODE=AxisMode.Prog   
+    
+    Az_MODE_MANU_B=None
+    Az_MODE_MANU_SET_B=None
+    Az_MODE_MANU_STOP_B=None
+    setStats(self,stats=None,mode="Strong"):
+    '''
+    
     
     def setAzProg(self):
         global AZ_IS_MAN
         global AZ_IS_STBY
         global AZ_IS_PROG
         global ANTTENA_AZMIZTH_PROG
+        
         AZ_IS_MAN=False
         AZ_IS_STBY=False
         AZ_IS_PROG=True
+        #.setStats(self,stats=None,mode="Strong")
         self.Az_MODE_PROG_B.setnormalColor()
         self.Az_MODE_MANU_B.setdisableColor()
         self.Az_MODE_STBY_B.setdisableColor()
         self.setAZ_LEVEL(frag=False)
         self.set_Az(AzV=ANTTENA_AZMIZTH_PROG)
+        global AZ_MODE
+        
+        if AZ_MODE is not AxisMode.ManuSet:
+            AZ_MODE=AxisMode.Prog
+            self.Az_MODE_PROG_B.setStats(stats=True,mode="Strong")
+            self.Az_MODE_MANU_B.setStats(stats=False,mode="OnlyColor")
+            self.Az_MODE_STBY_B.setStats(stats=False,mode="OnlyColor")
+
+        
 
     def setAzMan(self):
         global AZ_IS_MAN

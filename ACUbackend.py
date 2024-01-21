@@ -22,7 +22,7 @@ from skyfield.api import Topos, load, EarthSatellite,position_of_radec,wgs84,Sta
 import pynmea2
 import ephem
 import unicodedata
-from NormalizedConstValues import CommandStats
+from NormalizedConstValues import CommandMode
 
 
 class RadDiffCalc():
@@ -1140,6 +1140,82 @@ class AnntenaControllTest(Serialcommunicator4GeneralUse):
     def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none"):
         super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType)
 
+class StatsClass():
+    
+    __nowstats=None
+    
+    __beforestats=None
+    
+    __statsType=1
+    
+    __ischange=False
+    
+    
+    '''
+    __statsType
+    1=数字
+    2=CommandMode
+    '''
+    
+    def setNowstats(self,stats):
+        self.__nowstats=stats
+        self.setStats()
+        
+    def setbeforestats(self,stats):
+        self.__beforestats=stats
+        
+    def __init__(self,statsType):
+        self.__statsType=statsType
+        
+    def setStats(self):#どちらかがNoneでも実行する場合もある
+        re=False
+        if self.__statsType==1:
+            if self.__nowstats is not self.__beforestats:
+                re=True
+        if self.__statsType==2:
+            if self.__nowstats.value is not self.__beforestats.value:
+                re=True
+        self.__ischange=re
+        
+    def getchangeStats(self):
+        return self.__ischange
+    
+    def getNowstats(self):
+        return self.__nowstats
+    
+    def chancellnow(self):
+        self.__nowstats=self.__beforestats
+
+    
+class AxisStatsManager():
+    
+    __axisStats=None
+    
+    __statsCommand="0003"#prog
+
+    __isnow=True
+    
+    __statsDict={"ischange":False,"axisMode":None}
+    
+    def __init__(self):
+        self.__axisStats=StatsClass(2)
+
+    def updateStats(self,axisStats):
+        if self.__isnow and isinstance(axisStats,CommandMode):
+            self.__axisStats.setNowstats(axisStats)
+            if self.__axisStats.getchangeStats():
+                self.__statsDict.update(ischange=True,axisMode=self.__axisStats.getNowstats())
+            else:
+                self.__statsDict.update(ischange=False)
+        else:
+            self.__axisStats.setbeforestats(axisStats)
+            
+    def getStats(self):
+        return self.__statsDict
+    
+
+        
+
 
 class AnntenaController(Serialcommunicator4GeneralUse):
     
@@ -1206,7 +1282,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             pass
             self.TRAP=False
             
-                        
     def calculateAngles(self):
         ra=None
         dec=None
@@ -1219,7 +1294,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     def setPowerOn2GUI(self):
         pass
             
-    
     def setUpAntenna(self):
         if not self.setUped:
             if self.ControllMode is "TEST":
@@ -1311,7 +1385,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                 El=alt.degrees
         return Az,El
 
-
     def getAngleDiff(self,first_angle,second_angle):
         # 角度が範囲外の場合、正規化する
         first_angle = first_angle % 360
@@ -1324,7 +1397,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
         elif relative_angle < -180:
             relative_angle += 360
         return relative_angle
-
 
     def convertDeg2Hex(self,angle):
         '''
@@ -1353,22 +1425,30 @@ class AnntenaController(Serialcommunicator4GeneralUse):
 
     #---COMLISTEND-----
     
+    #---ADVANCED--COMEXECUTRER-------
+    
+    NowCommand=None
+    
+    
+    
+    #------------
+    
     BefAzEl={"Az":0,"El":0}
     AzEl={"Az":0,"El":0}
     
-    AxisCommandstats=CommandStats.UpdateAxis
-    PrevAxisCommandstats=CommandStats.UpdateAxis
+    AxisCommandMode=CommandMode.UpdateAxis
+    PrevAxisCommandMode=CommandMode.UpdateAxis
     
     AzSpeed=0
     ElSpeed=0
     
     NowAzStats="1000"
     NowElStats="1000"
-    def changeAxisCommandstats(self,flag=True):
+    def changeAxisCommandMode(self,flag=True):
         if flag:
-            AxisCommandstats=CommandStats.UpdateAxis
+            AxisCommandMode=CommandMode.UpdateAxis
         else:
-            AxisCommandstats=CommandStats.ReadAxis
+            AxisCommandMode=CommandMode.ReadAxis
                 
     
     def SerialFunc(self):
@@ -1377,7 +1457,7 @@ class AnntenaController(Serialcommunicator4GeneralUse):
         self.ACUmodeManager.update()
         if self.setUped:
             #print("実行中")
-            if self.AxisCommandstats is CommandStats.UpdateAxis and self.PrevAxisCommandstats is CommandStats.ReadAxis:
+            if self.AxisCommandMode is CommandMode.UpdateAxis and self.PrevAxisCommandMode is CommandMode.ReadAxis:
                 azel=self.PositionCom.getReceivedMessageContents()
                 self.AzEl.update(Az=azel["Az"],El=azel["El"])
                 self.AzSpeed=self.getAngleDiff(first_angle=self.BefAzEl["Az"],second_angle=self.AzEl["Az"])*(1/self.sleepTime)
@@ -1395,6 +1475,7 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                     pass
                 else: #None=Stanby
                     self.AxisModeCom.executeCommand(command="@8MOD W",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
+                    self.NowAzStats="1003"
                     pass
                 
                 if self.ACUmodeManager.getElMode():#True=Prog
@@ -1407,12 +1488,12 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             else:
                 self.updateMonitor(AzEL=self.AzEl,pAz=0,pEl=0,spAz=0,spEl=0,dAz=0,dEl=0)
         
-        self.PrevAxisCommandstats=self.AxisCommandstats
-        if self.AxisCommandstats is CommandStats.UpdateAxis:
-            self.changeAxisCommandstats(flag=False)
+        self.PrevAxisCommandMode=self.AxisCommandMode
+        if self.AxisCommandMode is CommandMode.UpdateAxis:
+            self.changeAxisCommandMode(flag=False)
             self.PositionCom.executeCommand(command="@8POS W",isMustCheckMessage=True,ignoreTimes=1,getdata=self.serialInputter.data)
-        elif self.AxisCommandstats is CommandStats.ReadAxis:
-            self.changeAxisCommandstats(flag=True)
+        elif self.AxisCommandMode is CommandMode.ReadAxis:
+            self.changeAxisCommandMode(flag=True)
             self.PositionCom.executeCommand(command="@8POS R2",isMustCheckMessage=True,ignoreTimes=1,getdata=self.serialInputter.data)
         self.BefAzEl.update(Az=self.AzEl["Az"],El=self.AzEl["El"])
         #self.ReceivedData = self.Serial.readline().decode('utf-8') #or ascii
@@ -1490,6 +1571,10 @@ class ACUmonitorModeManager():
     
     ACU=None
     
+    AzModeManager=None
+    
+    ElModeManager=None
+    
     def setAzProg2Monitor(self,rot):
         pass
     
@@ -1515,9 +1600,11 @@ class ACUmonitorModeManager():
         pass
 
     
-    def update(self):
-        self.IS_SLAVE_MODE,self.IS_INDIVISUAL_MODE,self.STOW_IS_POS,self.STOW_IS_REL,self.STOW_IS_LOCK,self.AZ_IS_STBY,self.AZ_IS_PROG,self.AZ_IS_MAN,self.EL_IS_STBY,self.EL_IS_PROG,self.EL_IS_MAN=self.ACU.FrontEnd.getStats()
     
+    def update(self):
+        #self.IS_SLAVE_MODE,self.IS_INDIVISUAL_MODE,self.STOW_IS_POS,self.STOW_IS_REL,self.STOW_IS_LOCK,self.AZ_IS_STBY,self.AZ_IS_PROG,self.AZ_IS_MAN,self.EL_IS_STBY,self.EL_IS_PROG,self.EL_IS_MAN=self.ACU.FrontEnd.getStats()
+        pass
+        
     def getControllMode(self):#True=SLAVE,False=INDIVISUAL
         return self.IS_SLAVE_MODE
     
@@ -1550,6 +1637,8 @@ class ACUmonitorModeManager():
     
     def __init__(self,acu=None):
         self.ACU=acu
+        self.AzModeManager=AxisStatsManager()
+        self.ElModeManager=AxisStatsManager()
         pass
 
 class GPSManager(Serialcommunicator4GeneralUse):
