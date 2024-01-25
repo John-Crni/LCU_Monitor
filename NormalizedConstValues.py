@@ -41,6 +41,9 @@ class Coordinate(Enum):
 class CommandMode(Enum):
     UpdateAxis=1
     ReadAxis=2
+    ReadAxisMode=3
+    UpdateAxisMode=4
+    
 
 class AxisMode(Enum):
     Prog=3
@@ -48,6 +51,4 @@ class AxisMode(Enum):
     ManuSet=4
     ManuStop=5
     Stby=6
-
-
     

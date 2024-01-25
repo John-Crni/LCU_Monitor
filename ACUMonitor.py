@@ -21,6 +21,13 @@ class Start():
         ACU.BackEnd.ACU_Monitor=ACU
         ACU.FrontEnd.ACU_Monitor=ACU
         print(ACU.FrontEnd.NAME)
+        
+        InputClass=ACUbackend.InputRoopClass(acu=ACU,sleepT=0.05)
+        AntenaAgent=ACUbackend.AnntenaMovement(acu=ACU,sleepT=0.1)
+        ACU.setUpAsync2List(As=InputClass)
+        ACU.setUpAsync2List(As=AntenaAgent)
+        ACU.setUpAsync2List(As=ACUbackend.AnntenaController(acu=ACU,sleepT=0.1,deviceName="USB Serial Port",deviceType="ACU",inputter=InputClass,movent=AntenaAgent,testMode=True))#InputRoopClass
+        
         #roop=ACUbackend.InputRoopClass(acu=ACU,sleepT=0.05)
         #ACU.setUpAsync2List(As=roop)
         #"ACU.setUpAsync2List(As=ACUbackend.AnntenaController(acu=ACU,sleepT=0.1,deviceName="USB Serial Port",deviceType="ACU",inputter=roop))#InputRoopClass

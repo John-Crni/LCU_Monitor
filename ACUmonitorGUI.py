@@ -26,13 +26,13 @@ FONT_TYPE = "x14y24pxHeadUpDaisy"
 DEFAULT_WINDOW_WIDTH=1110
 DEFAULT_WINDOW_HEIGHT=600
 RADIO_BUTTOM_NUM=0
-ANTTENA_AZMIZTH=3600000
+ANTTENA_AZMIZTH=0000000
 ANTTENA_AZMIZTH_PROG=3600000
 AZMIZTH_STR="3 6 0. 0 0 0 0"
 AZMIZTH_MAX=3600000
 AZMIZTH_MIN=-3600000
-ANTENA_ELEVATION=900000
-ANTENA_ELEVATION_PROG=900000
+ANTENA_ELEVATION=000000
+ANTENA_ELEVATION_PROG=890000
 ELEVATION_STR="8 9. 0 0 0 0"
 ELEVATION_MAX=890000
 ELEVATION_MIN=0
@@ -40,8 +40,10 @@ ELEVATION_MIN=0
 IS_SLAVE_MODE=False
 IS_INDIVISUAL_MODE=True
 
-AZ_MODE=AxisMode.Prog
-EL_MODE=AxisMode.Prog
+AZ_MODE=None
+EL_MODE=None
+BFR_AZ_MODE=None
+BFR_EL_MODE=None
 
 CONTROL_MODE=ACUControlMode.Slave
 STOW_MODE=StowMode.NONE
@@ -72,6 +74,8 @@ GUI_APP=None
 NotConect=True
 Conect=False
 AnttenaMoving=False
+AZ_MOVING=False
+EL_MOVING=False
 SELECTED_COM="NONE"
 
 def SetWindowPos(y=0,x=0):
@@ -104,6 +108,9 @@ class CustomBase(customtkinter.CTkFrame):
     AppearWindow=None
     CarsolisOn=False
     isCrasolMode=False
+    CommondestinyObj=[]
+    startWithParent=True#親が有効になったら、自分も有効化するか
+    endWithParent=True
     
     #GIFようの変数
     isGifMode=False
@@ -116,7 +123,12 @@ class CustomBase(customtkinter.CTkFrame):
     
     #ステータス管理変数
     Stats=True
+    BeforeStats=True
     Stats_mode="Strong"
+    BeforeStatsMode="Strong"
+    
+    def setCommondestinyObj(self,objs):
+        self.CommondestinyObj=objs
     
     
     def setDeath(self):
@@ -161,6 +173,9 @@ class CustomBase(customtkinter.CTkFrame):
     def getStats(self):
         return self.Stats
     
+    def getbeforeStats(self):
+        return self.BeforeStats
+    
     def getStats4GIF(self):
         return self.getStats() and self.isGifMode
             
@@ -179,22 +194,33 @@ class CustomBase(customtkinter.CTkFrame):
         self.CarsolisOn=True
     def setCarsolOut(self,event):
         self.CarsolisOn=False
+        
+    def undoStats(self):
+        self.setStats(stats=(not self.Stats),mode=self.BeforeStatsMode)
+    
     def setStats(self,stats=None,mode="Strong"):
-        BeforeStats=self.Stats
+        self.BeforeStats=self.Stats
         self.Stats=stats
-        change=BeforeStats ^ self.Stats
+        change=self.BeforeStats ^ self.Stats or (mode!=self.Stats_mode)
         if stats is not None:
             if stats is True and change:
+                self.BeforeStatsMode=self.Stats_mode
+                self.Stats_mode=mode
                 if mode is "Strong":
                     self.setNormal()
                     self.frame_index_counter=0
                     self.setGifFrames()
                 elif mode is "OnlyColor":
+                    self.directBody.configure(state="disabled")
                     self.setnormalColor()
             if stats is False and change:
+                self.BeforeStatsMode=self.Stats_mode
+                self.Stats_mode=mode
+
                 if mode is "Strong":
                     self.setDisable()
                 elif mode is "OnlyColor":
+                    self.directBody.configure(state="normal")
                     self.setdisableColor()
     def isWindowisCustom(self):
         if self.AppearWindow is None:
@@ -219,26 +245,44 @@ class CustomBase(customtkinter.CTkFrame):
         for child in children:
             if isinstance(child,CustomBase):
                 child.setNormal()
+                
     def setdisableColor(self):
         self.directBody.configure(fg_color=self.disableColor)
+        if self.CommondestinyObj is not None:
+            if len(self.CommondestinyObj)>0:
+                for obj in self.CommondestinyObj:
+                    if isinstance(obj,CustomBase):
+                        obj.setStats(stats=False,mode=self.Stats_mode)
+
+
     def setnormalColor(self):
         self.directBody.configure(fg_color=self.fg_color)
         if self.bd_width>0:
             self.directBody.configure(border_color=self.bd_color)
+        if self.CommondestinyObj is not None:
+            if len(self.CommondestinyObj)>0:
+                for obj in self.CommondestinyObj:
+                    if isinstance(obj,CustomBase):
+                        obj.setStats(stats=True,mode=self.Stats_mode)
+
+
     def setDisable(self):
         self.directBody.configure(state="disabled")
         self.setdisableColor()
         self.disable_child()
+
     def setNormal(self):
         self.directBody.configure(state="normal")
         self.setnormalColor()
         self.enable_child()
+
     def is_integer_num(self,n):
+        re=False
         if isinstance(n, int):
-            return True
+            re=True
         if isinstance(n, float):
-            return n.is_integer()
-        return False
+            re=n.is_integer()
+        return re
     def setGUI(self):
         i=0
         #self.directBody = customtkinter.CTkLabel(self,text=self.text, font=(FONT_TYPE, self.text_size),width=self.sizex,height=self.sizey)
@@ -247,7 +291,7 @@ class CustomBase(customtkinter.CTkFrame):
     def UPDATEGUI(self):
         self.directBody.configure(self.getWindow())
         #self.directBody.configure(text=self.text)
-    def update_gui(self,image_name="none",gif_name="none",gif_time=1.1,text="none_text",text_size=1.1,X=1.1,Y=1.1,sizeX=1.1,sizeY=1.1,bd_width=1.1,bd_color="none",fg="none",bg="none",textcolor="none"):
+    def update_gui(self,image_name="none",gif_name="none",gif_time=1.1,text="none_text",text_size=1.1,X=1.1,Y=1.1,sizeX=1.1,sizeY=1.1,bd_width=1.1,bd_color="none",fg="none",bg="none",textcolor="none",startwithParent=True,endwithParent=True):
         global IMAGE_PATH
         #if image_name!="none":
             #global IMAGE_PATH
@@ -289,6 +333,10 @@ class CustomBase(customtkinter.CTkFrame):
             
         if self.master is None:
             return
+        
+        self.startWithParent=startwithParent#親が有効になったら、自分も有効化するか
+        self.endWithParent=endwithParent
+
         
         self.update()
         mas_win_width=self.master.winfo_reqwidth()
@@ -617,7 +665,15 @@ class CustomButton(CustomBase):
     timermode=False
     ButtonMode=ButtonMode.Normal
     OtherButtons=None
-
+    
+    def undoStats(self):
+        super(CustomButton,self).undoStats()#getStats
+        if self.ButtonMode is ButtonMode.Radio:
+            if self.OtherButtons is not None:
+                for btm in self.OtherButtons:
+                    if btm.getButtomMode() is ButtonMode.Radio and btm.getbeforeStats():
+                        btm.setStats(stats=btm.getbeforeStats(),mode="Strong")
+        
     def setdisableColor(self):
         super(CustomButton,self).setdisableColor()
         if self.timermode:
@@ -631,6 +687,7 @@ class CustomButton(CustomBase):
         self.directBody.configure(text_color=self.textcolor)
         if self.ButtonMode is ButtonMode.Radio:
             if self.OtherButtons is not None:
+                print(len(self.OtherButtons))
                 for btm in self.OtherButtons:
                     if btm.getButtomMode() is ButtonMode.Radio:
                         btm.setStats(stats=False,mode="OnlyColor")
@@ -663,6 +720,7 @@ class CustomButton(CustomBase):
             self.cornerradius=cornerradius
     def updateOtherButtons(self,buttons=None):
         self.OtherButtons=buttons
+        
     def getButtomMode(self):
         return self.ButtonMode
 
@@ -962,6 +1020,8 @@ class LCU_Controller(customtkinter.CTkFrame):
     '''
     Commad_Line=None
     
+    ACU=None
+    
     Az_Real_F=None
     Az_Real_V_F=None
     Az_Prog_F=None
@@ -990,13 +1050,11 @@ class LCU_Controller(customtkinter.CTkFrame):
     Az_Limit_Unko_MB2=None
     Az_Limit_MNUS=None
     
+    Az_LEVEL_V_SIGN=None
     Az_LEVEL_V_3=None
     Az_LEVEL_V_6=None
     Az_LEVEL_V_0=None
     Az_LEVEL_V_01=None
-    Az_LEVEL_V_001=None
-    Az_LEVEL_V_0001=None
-    Az_LEVEL_V_00001=None
     
     Az_LEVEL_VH_F=None
     Az_LEVEL_VT_F=None
@@ -1045,12 +1103,10 @@ class LCU_Controller(customtkinter.CTkFrame):
     EL_LEVEL_V0001_F=None
     EL_LEVEL_V00001_F=None
 
+    EL_LEVEL_V_SIGN=None
     EL_LEVEL_V_9=None
     EL_LEVEL_V_0=None
     EL_LEVEL_V_01=None
-    EL_LEVEL_V_001=None
-    EL_LEVEL_V_0001=None
-    EL_LEVEL_V_00001=None
 
     EL_Limit_F=None
     EL_Limit_PLUS=None
@@ -1073,64 +1129,65 @@ class LCU_Controller(customtkinter.CTkFrame):
     Az_mode=None
     El_mode=None
 
-    def getCutFloat(self,num=0):
-        return round(num, 1)
-
-    def updateAz_num(self,pnum=0,nnum=0,work_time=0,speed=0,mode="prog"):
-        global ANTTENA_AZMIZTH
-        global ANTTENA_AZMIZTH_PROG
-        if mode is "manu":
-            pnum=ANTTENA_AZMIZTH/10000
-        t=('{:1.05f}'.format(pnum))
-        #print(t)
-        self.Az_Prog_V_F.update_gui(text=t)
-        t=('{:1.05f}'.format(nnum))
-        self.Az_Real_V_F.update_gui(text=t)
-        t2=('{:1.04f}'.format(pnum))
-        ANTTENA_AZMIZTH_PROG=float(t2)
+    def getNormarizedRot(self,rot,digitNum=8,roundNum=5):
+        needLen=digitNum+2
+        strRot=""
+        if isinstance(rot,int) or isinstance(rot,float):
+            sign=" " if rot>=0 else "-"
+            rot=abs(rot)
+            rot+=0.0
+            rot=round(rot,roundNum)
+            strRot= "{:.{}f}".format(rot,roundNum)
+            lenrot=len(strRot)
+            sign="+" if rot>=0 else "-"
+            if lenrot<needLen:
+                for i in range(1,(needLen-lenrot)+1):
+                    if needLen-(lenrot+i)==0:  
+                        strRot=sign+strRot
+                    else:
+                        strRot="0"+strRot
+        elif rot is None:
+            for i in range(0,digitNum+2):#2は.と頭文字の部分
+                if i==0:
+                    plus="-"
+                if i==(digitNum-roundNum+1):
+                    plus="."
+                elif i>0:
+                    plus="-"
+                strRot=strRot+plus
+        return strRot
+            
+    def updateAz(self,progRot=0,realRot=0,rotdiff=0,rotSpeed=0,roundNum=5):
+        global AZ_MODE
         
-        ANTTENA_AZMIZTH_PROG*=10000
-
-        self.Az_RePr_V_F.update_gui(text=('{:1.05f}'.format(pnum-nnum)))
-        Speed=speed/work_time
-        self.change_Az_Speed_F(str=str(round(Speed, 1)))
-        self.Az_SPEED_S.scaler.set(Speed)
-        if mode is "prog":
-            self.set_Az(AzV=ANTTENA_AZMIZTH_PROG)
-        if mode is "manu" and self.Az_mode is "prog":
-            self.set_Az(AzV=ANTTENA_AZMIZTH)
-        self.Az_mode=mode
-
-
-    def updateEl_num(self,pnum=0,nnum=0,work_time=0,speed=0,mode="prog"):
-        global ANTENA_ELEVATION
-        global ANTENA_ELEVATION_PROG
-        modeIsShanged=(mode!=self.El_mode)
-        if modeIsShanged and mode=="stby":
-            self.set_El(ElV=ANTENA_ELEVATION)
-        if mode is "manu" or mode is "stby":
-            pnum=ANTENA_ELEVATION/10000
-        t=('{:1.05f}'.format(pnum))
-        self.EL_Prog_V_F.update_gui(text=t)
-        t=('{:1.05f}'.format(nnum))
-        self.EL_Real_V_F.update_gui(text=t)
-        t2=('{:1.04f}'.format(pnum))
-        ANTENA_ELEVATION_PROG=float(t2)
-        ANTENA_ELEVATION_PROG*=10000
-        self.EL_RePr_V_F.update_gui(text=('{:1.05f}'.format(pnum-nnum)))
-        Speed=speed/work_time
+        self.Az_Prog_V_F.update_gui(text=self.getNormarizedRot(rot=progRot,digitNum=8,roundNum=5))
+        self.Az_Real_V_F.update_gui(text=self.getNormarizedRot(rot=realRot,digitNum=8,roundNum=5))
+        self.Az_RePr_V_F.update_gui(text=self.getNormarizedRot(rot=rotdiff,digitNum=8,roundNum=5))
         
-        self.EL_SPEED_S.scaler.set(Speed)
-        self.change_El_Speed_F(str=str(round(Speed, 1)))
-        if mode is "prog":
-            self.set_El(ElV=ANTENA_ELEVATION_PROG)
-            print("")
-        if mode is "manu" and self.El_mode is "prog":
-            self.set_El(ElV=ANTENA_ELEVATION)
-            print("")
-        self.El_mode=mode
-        #print("EL GUI")
-    
+        if isinstance(rotSpeed,int) or isinstance(rotSpeed,float):
+            self.change_Az_Speed_F(str=str(round(rotSpeed, 1)))
+            self.Az_SPEED_S.scaler.set(rotSpeed)
+        else:
+            self.change_Az_Speed_F(str="-stby-")
+            self.Az_SPEED_S.scaler.set(0)
+        if isinstance(progRot,int) or isinstance(progRot,float) and (AZ_MODE is AxisMode.Prog or AZ_MODE is AxisMode.Stby):
+            self.set_Az(AzV=progRot*10000)
+            
+    def updateEl(self,progRot=0,realRot=0,rotdiff=0,rotSpeed=0,roundNum=5):
+        global EL_MODE
+        self.EL_Prog_V_F.update_gui(text=self.getNormarizedRot(rot=progRot,digitNum=7,roundNum=5))
+        self.EL_Real_V_F.update_gui(text=self.getNormarizedRot(rot=realRot,digitNum=7,roundNum=5))
+        self.EL_RePr_V_F.update_gui(text=self.getNormarizedRot(rot=rotdiff,digitNum=7,roundNum=5))
+        
+        if isinstance(rotSpeed,int) or isinstance(rotSpeed,float):
+            self.change_El_Speed_F(str=str(round(rotSpeed, 1)))
+            self.EL_SPEED_S.scaler.set(rotSpeed)
+        else:
+            self.change_El_Speed_F(str="-stby-")
+            self.EL_SPEED_S.scaler.set(0)
+        if isinstance(progRot,int) or isinstance(progRot,float)and (EL_MODE is AxisMode.Prog or EL_MODE is AxisMode.Stby):
+            self.set_El(ElV=progRot*10000)
+
     def change_Az_Speed_F(self,str):
         self.Az_SPEED_F.update_gui(text=str)
         
@@ -1140,87 +1197,63 @@ class LCU_Controller(customtkinter.CTkFrame):
     def set_Az(self,AzV=3600000): 
         global AZMIZTH_STR
         AZMIZTH_STR=str(AzV)
-        LEN=len(AZMIZTH_STR)
-        num=AzV
-        unkown="-"
+        num=abs(AzV)
+        sign=""
+        if AzV<0:
+            sign="-"
+        
         Int1000000=(int(num/1000000))
-        #print("I1000000="+str(Int1000000))
+
         num-=(Int1000000*1000000)
         Int100000=(int(num/100000))
-        #Xprint("I100000="+str(Int100000))
         
         num-=(Int100000*100000)
         Int10000=(int(num/10000))
-        #print("I10000="+str(Int10000))
 
         num-=(Int10000*10000)
         Int1000=(int(num/1000))
-        #print("I1000="+str(Int1000))
     
         num-=(Int1000*1000)
         Int100=(int(num/100))
-        #print("I100="+str(Int100))
         
         num-=(Int100*100)
         Int10=(int(num/10))
-        #print("I10="+str(Int10))
         
         num-=(Int10*10)
         Int1=(int(num))
-        #print("I1="+str(Int1))
-
         
         if Int1000000<1:
             IsHundret="0"
         else:
             IsHundret=str(Int1000000)
             
-        if Int100000<1:
+        if (Int100000)<1:
             IsTen="0"
         else:
-            IsTen=str(Int100000)
+            IsTen=str((Int100000))
 
-        if Int10000<1:
+        if (Int10000)<1:
             IsOne="0"
         else:
-            IsOne=str(Int10000)
+            IsOne=str((Int10000))
             
-        if Int1000<1:
+        if (Int1000)<1:
             Is01="0"
         else:
-            Is01=str(Int1000)
-            
-        if Int100<1:
-            Is001="0"
-        else:
-            Is001=str(Int100)
-            
-        if Int10<1:
-            Is0001="0"
-        else:
-            Is0001=str(Int10)
-            
-        if Int1<1:
-            Is00001="0"
-        else:
-            Is00001=str(Int1)
+            Is01=str((Int1000))
 
+        self.Az_LEVEL_V_SIGN.update_gui(text=sign)
         self.Az_LEVEL_V_3.update_gui(text=IsHundret)
         self.Az_LEVEL_V_6.update_gui(text=IsTen)
         self.Az_LEVEL_V_0.update_gui(text=IsOne)
         self.Az_LEVEL_V_01.update_gui(text=Is01)
-        '''
-        self.Az_LEVEL_V_001.update_gui(text=Is001)
-        self.Az_LEVEL_V_0001.update_gui(text=Is0001)
-        self.Az_LEVEL_V_00001.update_gui(text=Is00001)
-        '''
-        
+   
     def set_El(self,ElV=900000):
         global ELEVATION_STR
-        ELEVATION_STR=str(ElV)
-        LEN=len(ELEVATION_STR)
-        num=ElV
-        unkown="-"
+        num=abs(ElV)
+        sign=""
+        if ElV<0:
+            sign="-"
         
         Int100000=(int(num/100000))
         num-=(Int100000*100000)
@@ -1242,9 +1275,6 @@ class LCU_Controller(customtkinter.CTkFrame):
         IsTen=""
         IsOne=""
         Is01=""
-        Is001=""
-        Is0001=""
-        Is00001=""
         
         if Int100000<1:
             IsTen="0"
@@ -1260,31 +1290,24 @@ class LCU_Controller(customtkinter.CTkFrame):
             Is01="0"
         else:
             Is01=str(Int1000)
-            
-        if Int100<1:
-            Is001="0"
-        else:
-            Is001=str(Int100)
-            
-        if Int10<1:
-            Is0001="0"
-        else:
-            Is0001=str(Int10)
-            
-        if Int1<1:
-            Is00001="0"
-        else:
-            Is00001=str(Int1)
 
+        self.EL_LEVEL_V_SIGN.update_gui(text=sign)
         self.EL_LEVEL_V_9.update_gui(text=IsTen)
         self.EL_LEVEL_V_0.update_gui(text=IsOne)
         self.EL_LEVEL_V_01.update_gui(text=Is01)
-        '''
-        self.EL_LEVEL_V_001.update_gui(text=Is001)
-        self.EL_LEVEL_V_0001.update_gui(text=Is0001)
-        self.EL_LEVEL_V_00001.update_gui(text=Is00001)
-        '''
+    
+    def changeElSign2Minus(self):
+        self.change_ElevationValue(sing="M")
         
+    def changeElSign2Plus(self):
+        self.change_ElevationValue(sing="P")
+
+    def changeAzSign2Minus(self):
+        self.change_AzmizValue(sing="M")
+        
+    def changeAzSign2Plus(self):
+        self.change_AzmizValue(sing="P")
+    
     def changeAz100P(self):
         self.change_AzmizValue(rate=1000000)
 
@@ -1370,26 +1393,37 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.change_ElevationValue(rate=1,sing="-")
 
 #---------------------------------------------
-        
+
     def change_AzmizValue(self,rate=1,sing="+",mode="prog"):
-        global ANTTENA_AZMIZTH
+        global ANTTENA_AZMIZTH_PROG
         global AZMIZTH_STR
-        if sing=="+" and (ANTTENA_AZMIZTH+rate)<=AZMIZTH_MAX:
-            ANTTENA_AZMIZTH+=rate
-        if sing=="-" and (ANTTENA_AZMIZTH-rate)>=AZMIZTH_MIN:
-            ANTTENA_AZMIZTH-=rate
-        self.set_Az(AzV=ANTTENA_AZMIZTH)
-               
+        if sing=="+" and (ANTTENA_AZMIZTH_PROG+rate)<=AZMIZTH_MAX:
+            ANTTENA_AZMIZTH_PROG+=rate
+        if sing=="-" and (ANTTENA_AZMIZTH_PROG-rate)>=AZMIZTH_MIN:
+            ANTTENA_AZMIZTH_PROG-=rate
+        if sing=="M":
+            ANTTENA_AZMIZTH_PROG=abs(ANTTENA_AZMIZTH_PROG)
+            ANTTENA_AZMIZTH_PROG*=-1
+        if sing=="P":
+            ANTTENA_AZMIZTH_PROG=abs(ANTTENA_AZMIZTH_PROG)
+        self.set_Az(AzV=ANTTENA_AZMIZTH_PROG)
+
     def change_ElevationValue(self,rate=1,sing="+",mode="prog"):
-        global ANTENA_ELEVATION
+        global ANTENA_ELEVATION_PROG
         global ELEVATION_STR
-        if sing=="+" and (ANTENA_ELEVATION+rate)<=ELEVATION_MAX:
-            ANTENA_ELEVATION+=rate
-        if sing=="-" and (ANTENA_ELEVATION-rate)>=ELEVATION_MIN:
-            ANTENA_ELEVATION-=rate
-        self.set_El(ElV=ANTENA_ELEVATION)
+        if sing=="+" and (ANTENA_ELEVATION_PROG+rate)<=ELEVATION_MAX:
+            ANTENA_ELEVATION_PROG+=rate
+        if sing=="-" and (ANTENA_ELEVATION_PROG-rate)>=ELEVATION_MIN:
+            ANTENA_ELEVATION_PROG-=rate
+        if sing=="M":
+            ANTENA_ELEVATION_PROG=abs(ANTENA_ELEVATION_PROG)
+            ANTENA_ELEVATION_PROG*=-1
+        if sing=="P":
+            ANTENA_ELEVATION_PROG=abs(ANTENA_ELEVATION_PROG)
+
+        self.set_El(ElV=ANTENA_ELEVATION_PROG)
         #self.EL_LEVEL_V_F.update_gui(text=ELEVATION_STR)
-    
+
     def printS(self):
         print("HELLOW")
 
@@ -1438,110 +1472,250 @@ class LCU_Controller(customtkinter.CTkFrame):
             self.Az_LEVEL_V01M_F.setDisable()
 
     '''
-    AZ_MODE=AxisMode.Prog
-    EL_MODE=AxisMode.Prog   
-    
-    Az_MODE_MANU_B=None
-    Az_MODE_MANU_SET_B=None
-    Az_MODE_MANU_STOP_B=None
-    setStats(self,stats=None,mode="Strong"):
+        AZ_MODE=AxisMode.Prog
+        EL_MODE=AxisMode.Prog   
+        
+        Az_MODE_MANU_B=None
+        Az_MODE_MANU_SET_B=None
+        Az_MODE_MANU_STOP_B=None
+        setStats(self,stats=None,mode="Strong"):
     '''
-    
-    
+
     def setAzProg(self):
-        global AZ_IS_MAN
-        global AZ_IS_STBY
-        global AZ_IS_PROG
-        global ANTTENA_AZMIZTH_PROG
-        
-        AZ_IS_MAN=False
-        AZ_IS_STBY=False
-        AZ_IS_PROG=True
-        #.setStats(self,stats=None,mode="Strong")
-        self.Az_MODE_PROG_B.setnormalColor()
-        self.Az_MODE_MANU_B.setdisableColor()
-        self.Az_MODE_STBY_B.setdisableColor()
-        self.setAZ_LEVEL(frag=False)
-        self.set_Az(AzV=ANTTENA_AZMIZTH_PROG)
+        '''
+            global AZ_IS_MAN
+            global AZ_IS_STBY
+            global AZ_IS_PROG
+            global ANTTENA_AZMIZTH_PROG
+            
+            AZ_IS_MAN=False
+            AZ_IS_STBY=False
+            AZ_IS_PROG=True
+            #.setStats(self,stats=None,mode="Strong")
+            self.Az_MODE_PROG_B.setnormalColor()
+            self.Az_MODE_MANU_B.setdisableColor()
+            self.Az_MODE_STBY_B.setdisableColor()
+            self.setAZ_LEVEL(frag=False)
+            self.set_Az(AzV=ANTTENA_AZMIZTH_PROG)
+        '''
         global AZ_MODE
-        
-        if AZ_MODE is not AxisMode.ManuSet:
+        global BFR_AZ_MODE
+        global ANTTENA_AZMIZTH_PROG
+        if AZ_MODE is not AxisMode.ManuSet and AZ_MODE is not AxisMode.Prog:
+            BFR_AZ_MODE=AZ_MODE
             AZ_MODE=AxisMode.Prog
             self.Az_MODE_PROG_B.setStats(stats=True,mode="Strong")
-            self.Az_MODE_MANU_B.setStats(stats=False,mode="OnlyColor")
-            self.Az_MODE_STBY_B.setStats(stats=False,mode="OnlyColor")
-
-        
+            self.setAZ_LEVEL(frag=False)#manualの数字メモリ
+            self.set_Az(AzV=ANTTENA_AZMIZTH_PROG)
+            self.Az_MODE_MANU_SET_B.setStats(stats=False,mode="Strong")
+            self.Az_MODE_MANU_STOP_B.setStats(stats=False,mode="Strong")
 
     def setAzMan(self):
-        global AZ_IS_MAN
-        global AZ_IS_STBY
-        global AZ_IS_PROG
+        '''
+            global AZ_IS_MAN
+            global AZ_IS_STBY
+            global AZ_IS_PROG
+            global ANTTENA_AZMIZTH
+            AZ_IS_MAN=True
+            AZ_IS_STBY=False
+            AZ_IS_PROG=False
+            self.Az_MODE_PROG_B.setdisableColor()
+            self.Az_MODE_MANU_B.setnormalColor()
+            self.Az_MODE_STBY_B.setdisableColor()
+            self.setAZ_LEVEL(frag=True)
+            self.set_Az(AzV=ANTTENA_AZMIZTH)
+        '''
         global ANTTENA_AZMIZTH
-        AZ_IS_MAN=True
-        AZ_IS_STBY=False
-        AZ_IS_PROG=False
-        self.Az_MODE_PROG_B.setdisableColor()
-        self.Az_MODE_MANU_B.setnormalColor()
-        self.Az_MODE_STBY_B.setdisableColor()
-        self.setAZ_LEVEL(frag=True)
-        self.set_Az(AzV=ANTTENA_AZMIZTH)
+        global ANTTENA_AZMIZTH_PROG
+        global AZ_MODE
+        global BFR_AZ_MODE
+        
+        error=False
+        if self.ACU.isPlanetSelected():
+            messagebox.showinfo('エラー', "天体座標が既に選択されています。マニュアルモードにするためには選択中の天体を削除してください")
+            error=True
+
+        if AZ_MODE is not AxisMode.ManuSet and AZ_MODE is not AxisMode.Manu and AZ_MODE is not AxisMode.ManuStop and not error:
+            BFR_AZ_MODE=AZ_MODE
+            AZ_MODE=AxisMode.Manu
+            ANTTENA_AZMIZTH_PROG=ANTTENA_AZMIZTH
+            self.Az_MODE_MANU_B.setStats(stats=True,mode="Strong")
+            self.setAZ_LEVEL(frag=True)#manualの数字メモリ
+            self.set_Az(AzV=ANTTENA_AZMIZTH)
+            self.Az_MODE_MANU_SET_B.setStats(stats=True,mode="Strong")
+
+    def setAzManStop(self):
+        global AZ_MODE
+        global BFR_AZ_MODE
+        BFR_AZ_MODE=AZ_MODE
+        AZ_MODE=AxisMode.ManuStop
+        self.setAZ_LEVEL(frag=True)#manualの数字メモリ
+        self.Az_MODE_MANU_SET_B.setStats(stats=True,mode="Strong")
+        self.Az_MODE_MANU_STOP_B.setStats(stats=False,mode="Strong")
+        self.Az_MODE_PROG_B.setStats(stats=False,mode="OnlyColor")
+        self.Az_MODE_STBY_B.setStats(stats=False,mode="OnlyColor")
+
+    def setAzManSet(self):
+        global AZ_MODE
+        global BFR_AZ_MODE
+        global ANTTENA_AZMIZTH_PROG   
+        BFR_AZ_MODE=AZ_MODE     
+        AZ_MODE=AxisMode.ManuSet
+        self.setAZ_LEVEL(frag=False)#manualの数字メモリ
+        self.Az_MODE_MANU_SET_B.setStats(stats=False,mode="Strong")
+        self.Az_MODE_MANU_STOP_B.setStats(stats=True,mode="Strong")
+        self.Az_MODE_PROG_B.setStats(stats=False,mode="Strong")
+        self.Az_MODE_STBY_B.setStats(stats=False,mode="Strong")
 
     def setAzStby(self):
-        global AZ_IS_MAN
-        global AZ_IS_STBY
-        global AZ_IS_PROG
+        '''
+            global AZ_IS_MAN
+            global AZ_IS_STBY
+            global AZ_IS_PROG
+            global ANTTENA_AZMIZTH
+            AZ_IS_MAN=False
+            AZ_IS_STBY=True
+            AZ_IS_PROG=False
+            self.Az_MODE_PROG_B.setdisableColor()
+            self.Az_MODE_MANU_B.setdisableColor()
+            self.Az_MODE_STBY_B.setnormalColor()
+            self.setAZ_LEVEL(frag=True)
+            self.set_Az(AzV=ANTTENA_AZMIZTH)
+        '''
         global ANTTENA_AZMIZTH
-        AZ_IS_MAN=False
-        AZ_IS_STBY=True
-        AZ_IS_PROG=False
-        self.Az_MODE_PROG_B.setdisableColor()
-        self.Az_MODE_MANU_B.setdisableColor()
-        self.Az_MODE_STBY_B.setnormalColor()
-        self.setAZ_LEVEL(frag=True)
-        self.set_Az(AzV=ANTTENA_AZMIZTH)
+        global AZ_MODE
+        global AZ_MOVING
+        global BFR_AZ_MODE
+        pswd="1234"
+        if AZ_MOVING and (AZ_MODE is AxisMode.Prog or AZ_MODE is AxisMode.ManuSet):
+            pswd=tkinter.simpledialog.askstring("スタンバイモードに移ります", "スタンバイモードに移るには1234を入力")
+
+        if AZ_MODE is not AxisMode.Stby and pswd=="1234":
+            BFR_AZ_MODE=AZ_MODE
+            AZ_MODE=AxisMode.Stby
+            self.Az_MODE_STBY_B.setStats(stats=True,mode="Strong")
+            self.setAZ_LEVEL(frag=False)#manualの数字メモリ
+            self.set_Az(AzV=ANTTENA_AZMIZTH)
+            self.Az_MODE_MANU_SET_B.setStats(stats=False,mode="Strong")
+            self.Az_MODE_MANU_STOP_B.setStats(stats=False,mode="Strong")
 
     def setELProg(self):
-        global EL_IS_MAN
-        global EL_IS_STBY
-        global EL_IS_PROG
+        '''
+            global EL_IS_MAN
+            global EL_IS_STBY
+            global EL_IS_PROG
+            global ANTENA_ELEVATION_PROG
+            EL_IS_MAN=False
+            EL_IS_STBY=False
+            EL_IS_PROG=True
+            sELf.EL_MODE_PROG_B.setnormalColor()
+            sELf.EL_MODE_MANU_B.setdisableColor()
+            sELf.EL_MODE_STBY_B.setdisableColor()
+            sELf.setEL_LEVEL(frag=False)
+            sELf.set_EL(ELV=ANTENA_ELEVATION_PROG)
+        '''
+        global EL_MODE
         global ANTENA_ELEVATION_PROG
-        EL_IS_MAN=False
-        EL_IS_STBY=False
-        EL_IS_PROG=True
-        self.EL_MODE_PROG_B.setnormalColor()
-        self.EL_MODE_MANU_B.setdisableColor()
-        self.EL_MODE_STBY_B.setdisableColor()
-        self.setEL_LEVEL(frag=False)
-        self.set_El(ElV=ANTENA_ELEVATION_PROG)
+        global BFR_EL_MODE
+        if EL_MODE is not AxisMode.ManuSet and EL_MODE is not AxisMode.Prog:
+            BFR_EL_MODE=EL_MODE
+            EL_MODE=AxisMode.Prog
+            self.EL_MODE_PROG_B.setStats(stats=True,mode="Strong")
+            self.setEL_LEVEL(frag=False)#manualの数字メモリ
+            self.set_El(ElV=ANTENA_ELEVATION_PROG)
+            self.EL_MODE_MANU_SET_B.setStats(stats=False,mode="Strong")
+            self.EL_MODE_MANU_STOP_B.setStats(stats=False,mode="Strong")
 
     def setELMan(self):
-        global EL_IS_MAN
-        global EL_IS_STBY
-        global EL_IS_PROG
+        '''
+            global EL_IS_MAN
+            global EL_IS_STBY
+            global EL_IS_PROG
+            global ANTENA_ELEVATION
+            EL_IS_MAN=True
+            EL_IS_STBY=False
+            EL_IS_PROG=False
+            self.EL_MODE_PROG_B.setdisableColor()
+            self.EL_MODE_MANU_B.setnormalColor()
+            self.EL_MODE_STBY_B.setdisableColor()
+            self.setEL_LEVEL(frag=True)
+            self.set_El(AzV=ANTENA_ELEVATION)
+        '''
         global ANTENA_ELEVATION
-        EL_IS_MAN=True
-        EL_IS_STBY=False
-        EL_IS_PROG=False
-        self.EL_MODE_PROG_B.setdisableColor()
-        self.EL_MODE_MANU_B.setnormalColor()
-        self.EL_MODE_STBY_B.setdisableColor()
-        self.setEL_LEVEL(frag=True)
-        self.set_El(AzV=ANTENA_ELEVATION)
+        global ANTENA_ELEVATION_PROG
+        global EL_MODE
+        global BFR_EL_MODE
+        error=False
+        if self.ACU.isPlanetSelected():
+            messagebox.showinfo('エラー', "天体座標が既に選択されています。マニュアルモードにするためには選択中の天体を削除してください")
+            error=True
+            
+        if (EL_MODE is not AxisMode.ManuSet and EL_MODE is not AxisMode.Manu and EL_MODE is not AxisMode.ManuStop) and not error:
+            BFR_EL_MODE=EL_MODE
+            EL_MODE=AxisMode.Manu
+            ANTENA_ELEVATION_PROG=ANTENA_ELEVATION
+            self.EL_MODE_MANU_B.setStats(stats=True,mode="Strong")
+            self.setEL_LEVEL(frag=True)#manualの数字メモリ
+            self.set_El(ElV=ANTENA_ELEVATION_PROG)
+            self.EL_MODE_MANU_SET_B.setStats(stats=True,mode="Strong")
+            
+    def setElManStop(self):
+        global EL_MODE
+        global BFR_EL_MODE
+        BFR_EL_MODE=EL_MODE
+        EL_MODE=AxisMode.ManuStop
+        self.setEL_LEVEL(frag=True)#manualの数字メモリ
+        self.EL_MODE_MANU_SET_B.setStats(stats=True,mode="Strong")
+        self.EL_MODE_MANU_STOP_B.setStats(stats=False,mode="Strong")
+        self.EL_MODE_PROG_B.setStats(stats=False,mode="OnlyColor")
+        self.EL_MODE_STBY_B.setStats(stats=False,mode="OnlyColor")
+
+    def setElManSet(self):
+        global EL_MODE
+        global BFR_EL_MODE
+        global ANTENA_ELEVATION_PROG  
+        BFR_EL_MODE=EL_MODE      
+        EL_MODE=AxisMode.ManuSet
+        self.setEL_LEVEL(frag=False)#manualの数字メモリ
+        self.EL_MODE_MANU_SET_B.setStats(stats=False,mode="Strong")
+        self.EL_MODE_MANU_STOP_B.setStats(stats=True,mode="Strong")
+        self.EL_MODE_PROG_B.setStats(stats=False,mode="Strong")
+        self.EL_MODE_STBY_B.setStats(stats=False,mode="Strong")
+
 
     def setELStby(self):
-        global EL_IS_MAN
-        global EL_IS_STBY
-        global EL_IS_PROG
+        '''
+            global EL_IS_MAN
+            global EL_IS_STBY
+            global EL_IS_PROG
+            global ANTENA_ELEVATION
+            EL_IS_MAN=False
+            EL_IS_STBY=True
+            EL_IS_PROG=False
+            self.EL_MODE_PROG_B.setdisableColor()
+            self.EL_MODE_MANU_B.setdisableColor()
+            self.EL_MODE_STBY_B.setnormalColor()
+            self.setEL_LEVEL(frag=True)
+            self.set_El(AzV=ANTENA_ELEVATION)
+        '''
+        
         global ANTENA_ELEVATION
-        EL_IS_MAN=False
-        EL_IS_STBY=True
-        EL_IS_PROG=False
-        self.EL_MODE_PROG_B.setdisableColor()
-        self.EL_MODE_MANU_B.setdisableColor()
-        self.EL_MODE_STBY_B.setnormalColor()
-        self.setEL_LEVEL(frag=True)
-        self.set_El(AzV=ANTENA_ELEVATION)
+        global EL_MODE
+        global EL_MOVING
+        global BFR_EL_MODE
+        pswd="1234"
+        if EL_MOVING and (EL_MODE is AxisMode.Prog or EL_MODE is AxisMode.ManuSet):
+            pswd=tkinter.simpledialog.askstring("スタンバイモードに移ります", "スタンバイモードに移るには1234を入力")
+
+        if EL_MODE is not AxisMode.Stby and pswd=="1234":
+            BFR_EL_MODE=EL_MODE
+            EL_MODE=AxisMode.Stby
+            self.EL_MODE_STBY_B.setStats(stats=True,mode="Strong")
+            self.setEL_LEVEL(frag=False)#manualの数字メモリ
+            self.set_El(ElV=ANTENA_ELEVATION)
+            self.EL_MODE_MANU_SET_B.setStats(stats=False,mode="Strong")
+            self.EL_MODE_MANU_STOP_B.setStats(stats=False,mode="Strong")
+
 
     def setIndivMode(self):
         self.Az_MODE_MANU_B.setDisable()
@@ -1574,14 +1748,14 @@ class LCU_Controller(customtkinter.CTkFrame):
         #ACU_F.label.update()
         self.Commad_Line=CustomTextBox2(master=ACU_F,text="None",text_size=20,X=90,Y=50,sizeX=30,sizeY=100)
         self.Commad_Line.setReadonly()
-        Azimuth_T= CustomText(master=ACU_F,text="Azmizu",text_size=20,X=16,Y=5,sizeX=10,sizeY=5)
+        Azimuth_T= CustomText(master=ACU_F,text="Azimuth",text_size=20,X=16,Y=5,sizeX=10,sizeY=5)
         self.Az_Real_F=CustomText(master=ACU_F,parent=Azimuth_T,text="REAL:",text_size=30,X=-60,Y=180,sizeX=10,sizeY=5)
-        self.Az_Real_V_F=CustomText(master=ACU_F,parent=self.Az_Real_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        self.Az_Real_V_F=CustomText(master=ACU_F,parent=self.Az_Real_F,text=" ---.------",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
         self.Az_Prog_F=CustomText(master=ACU_F,parent=self.Az_Real_F,text="PROG:",text_size=30,X=50,Y=200,sizeX=10,sizeY=5)
-        self.Az_Prog_V_F=CustomText(master=ACU_F,parent=self.Az_Prog_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        self.Az_Prog_V_F=CustomText(master=ACU_F,parent=self.Az_Prog_F,text=" ---.------",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
         
         self.Az_RePr_F=CustomText(master=ACU_F,parent=self.Az_Prog_F,text="DIFF:",text_size=30,X=50,Y=200,sizeX=10,sizeY=5)
-        self.Az_RePr_V_F=CustomText(master=ACU_F,parent=self.Az_RePr_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        self.Az_RePr_V_F=CustomText(master=ACU_F,parent=self.Az_RePr_F,text=" ---.------",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
         
         self.Az_SPEED_FF=CustomText(master=ACU_F,parent=self.Az_RePr_F,X=28,Y=350,text="SPEED:",text_size=25,sizeX=5,sizeY=3)
         self.Az_SPEED_S=CustomScaler(master=ACU_F,parent=self.Az_SPEED_FF,sizeX=20,sizeY=4,com=self.change_Az_Speed_F,X=430,Y=100,first_value=-2,end_value=2)
@@ -1589,13 +1763,24 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.change_Az_Speed_F(self.Az_SPEED_S.scaler.get())
         
         self.Az_MODE_F=CustomText(master=ACU_F,parent=self.Az_SPEED_FF,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
-        self.Az_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.Az_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setAzProg)
-        self.Az_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.Az_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setAzMan)
-        self.Az_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.Az_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setAzStby)
+        self.Az_MODE_PROG_B=CustomButton(master=ACU_F,buttonMode=ButtonMode.Radio,parent=self.Az_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setAzProg)
+        self.Az_MODE_MANU_B=CustomButton(master=ACU_F,buttonMode=ButtonMode.Radio,parent=self.Az_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setAzMan)
+        self.Az_MODE_MANU_SET_B=CustomButton(master=ACU_F,buttonMode=ButtonMode.Radio,parent=self.Az_MODE_MANU_B,X=160,Y=600,text=" SET ",text_size=13,sizeX=4,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setAzManSet)
+        self.Az_MODE_MANU_STOP_B=CustomButton(master=ACU_F,buttonMode=ButtonMode.Radio,parent=self.Az_MODE_MANU_B,X=155,Y=950,text=">STOP<",text_size=13,sizeX=4,sizeY=2,textcolor="red",fg=ACU_F.cget("fg_color"),hg="gray",bd_width=1,bd_color="red",com=self.setAzManStop)
+        self.Az_MODE_STBY_B=CustomButton(master=ACU_F,buttonMode=ButtonMode.Radio,parent=self.Az_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setAzStby)
+        
+        
+        self.Az_MODE_PROG_B.updateOtherButtons(buttons=[self.Az_MODE_MANU_B,self.Az_MODE_STBY_B])
+        self.Az_MODE_MANU_B.updateOtherButtons(buttons=[self.Az_MODE_PROG_B,self.Az_MODE_STBY_B])
+        self.Az_MODE_STBY_B.updateOtherButtons(buttons=[self.Az_MODE_PROG_B,self.Az_MODE_MANU_B])
+
+
+        self.Az_MODE_PROG_B.setStats(stats=False,mode="Strong")
         
         diff=20
-        self.Az_LEVEL_V_3=CustomText(master=ACU_F,parent=self.Az_MODE_F,X=300,Y=500,text="3",text_size=26,sizeX=1,sizeY=2)
-        self.Az_LEVEL_V_6=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_3,X=200+diff,Y=50,text="6",text_size=26,sizeX=1,sizeY=2)
+        self.Az_LEVEL_V_3=CustomText(master=ACU_F,parent=self.Az_MODE_F,X=300,Y=500,text="0",text_size=26,sizeX=1,sizeY=2)
+        self.Az_LEVEL_V_SIGN=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_3,X=-170,Y=50,text="",text_size=26,sizeX=1,sizeY=2)
+        self.Az_LEVEL_V_6=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_3,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
         self.Az_LEVEL_V_0=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_6,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
         commma=CustomText(master=ACU_F,parent=self.Az_LEVEL_V_0,X=200,Y=50,text=".",text_size=26,sizeX=1,sizeY=2)
         self.Az_LEVEL_V_01=CustomText(master=ACU_F,parent=commma,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
@@ -1608,7 +1793,7 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.Az_LEVEL_VO_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VT_F,X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz1P,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         self.Az_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VO_F,X=a+diff,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01P,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         diff=0
-        self.Az_LEVEL_PLUS_B=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VH_F,X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.Az_LEVEL_PLUS_B=CustomButton(master=ACU_F,com=self.changeAzSign2Plus,parent=self.Az_LEVEL_VH_F,X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         b=100
         diff=100
         self.Az_LEVEL_VHM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_V_3,X=20,Y=300,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz100M,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
@@ -1616,16 +1801,16 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.Az_LEVEL_VOM_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VTM_F,X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz1M,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         self.Az_LEVEL_V01M_F=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VOM_F,X=a+diff,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeAz01M,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         diff=0
-        self.Az_LEVEL_MNUS_B=CustomButton(master=ACU_F,parent=self.Az_LEVEL_VHM_F,X=-1*a,Y=50,text="-",text_size=10,sizeX=1,sizeY=1,cornerradius=0,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.Az_LEVEL_MNUS_B=CustomButton(master=ACU_F,com=self.changeAzSign2Minus,parent=self.Az_LEVEL_VHM_F,X=-1*a,Y=50,text="-",text_size=10,sizeX=1,sizeY=1,cornerradius=0,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         #EL_VERSION---------------------------------------------------------------------------------------------------------------------------------------#
         Elevation_T= CustomText(master=ACU_F,text="Elevation",text_size=20,X=55,Y=5,sizeX=10,sizeY=5)
         self.EL_Real_F=CustomText(master=ACU_F,parent=Elevation_T,text="REAL:",text_size=30,X=-60,Y=180,sizeX=10,sizeY=5)
-        self.EL_Real_V_F=CustomText(master=ACU_F,parent=self.EL_Real_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        self.EL_Real_V_F=CustomText(master=ACU_F,parent=self.EL_Real_F,text=" --.------",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
         self.EL_Prog_F=CustomText(master=ACU_F,parent=self.EL_Real_F,text="PROG:",text_size=30,X=50,Y=200,sizeX=10,sizeY=5)
-        self.EL_Prog_V_F=CustomText(master=ACU_F,parent=self.EL_Prog_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        self.EL_Prog_V_F=CustomText(master=ACU_F,parent=self.EL_Prog_F,text=" --.------",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
         
         self.EL_RePr_F=CustomText(master=ACU_F,parent=self.EL_Prog_F,text="DIFF:",text_size=30,X=50,Y=200,sizeX=10,sizeY=5)
-        self.EL_RePr_V_F=CustomText(master=ACU_F,parent=self.EL_RePr_F,text="169.12345",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
+        self.EL_RePr_V_F=CustomText(master=ACU_F,parent=self.EL_RePr_F,text=" --.------",text_size=35,X=160,Y=50,sizeX=10,sizeY=5)
         
         self.EL_SPEED_FF=CustomText(master=ACU_F,parent=self.EL_RePr_F,X=28,Y=350,text="SPEED:",text_size=25,sizeX=5,sizeY=3)
         self.EL_SPEED_S=CustomScaler(master=ACU_F,parent=self.EL_SPEED_FF,sizeX=20,sizeY=4,com=self.change_El_Speed_F,X=430,Y=100,first_value=-2,end_value=2)
@@ -1633,13 +1818,23 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.change_El_Speed_F(self.EL_SPEED_S.scaler.get())
 
         self.EL_MODE_F=CustomText(master=ACU_F,parent=self.EL_SPEED_FF,X=50,Y=400,text="MODE:",text_size=25,sizeX=5,sizeY=3)
-        self.EL_MODE_PROG_B=CustomButton(master=ACU_F,parent=self.EL_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setELProg)
-        self.EL_MODE_MANU_B=CustomButton(master=ACU_F,parent=self.EL_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setELMan)
-        self.EL_MODE_STBY_B=CustomButton(master=ACU_F,parent=self.EL_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setELStby)
-        
+        self.EL_MODE_PROG_B=CustomButton(master=ACU_F,buttonMode=ButtonMode.Radio,parent=self.EL_MODE_F,X=260,Y=40,text="PROG",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setELProg)
+        self.EL_MODE_MANU_B=CustomButton(master=ACU_F,buttonMode=ButtonMode.Radio,parent=self.EL_MODE_PROG_B,X=200,Y=50,text="MANU",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setELMan)
+        self.EL_MODE_MANU_SET_B=CustomButton(master=ACU_F,buttonMode=ButtonMode.Radio,parent=self.EL_MODE_MANU_B,X=160,Y=600,text=" SET ",text_size=13,sizeX=4,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setElManSet)
+        self.EL_MODE_MANU_STOP_B=CustomButton(master=ACU_F,buttonMode=ButtonMode.Radio,parent=self.EL_MODE_MANU_B,X=155,Y=950,text=">STOP<",text_size=13,sizeX=4,sizeY=2,textcolor="red",fg=ACU_F.cget("fg_color"),hg="gray",bd_width=1,bd_color="red",com=self.setElManStop)
+        self.EL_MODE_STBY_B=CustomButton(master=ACU_F,buttonMode=ButtonMode.Radio,parent=self.EL_MODE_MANU_B,X=200,Y=50,text="STBY",text_size=25,sizeX=6,sizeY=2,textcolor="DarkSlateGray2",fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.setELStby)
+
+        self.EL_MODE_PROG_B.updateOtherButtons(buttons=[self.EL_MODE_MANU_B,self.EL_MODE_STBY_B])
+        self.EL_MODE_MANU_B.updateOtherButtons(buttons=[self.EL_MODE_PROG_B,self.EL_MODE_STBY_B])
+        self.EL_MODE_STBY_B.updateOtherButtons(buttons=[self.EL_MODE_PROG_B,self.EL_MODE_MANU_B])
+
+
+        self.EL_MODE_PROG_B.setStats(stats=False,mode="Strong")
+
 
         diff=20
-        self.EL_LEVEL_V_9=CustomText(master=ACU_F,parent=self.EL_MODE_F,X=300,Y=500,text="9",text_size=26,sizeX=1,sizeY=2)
+        self.EL_LEVEL_V_9=CustomText(master=ACU_F,parent=self.EL_MODE_F,X=300,Y=500,text="0",text_size=26,sizeX=1,sizeY=2)
+        self.EL_LEVEL_V_SIGN=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_9,X=-170,Y=50,text="",text_size=26,sizeX=1,sizeY=2)
         self.EL_LEVEL_V_0=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_9,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
         commma=CustomText(master=ACU_F,parent=self.EL_LEVEL_V_0,X=200,Y=50,text=".",text_size=26,sizeX=1,sizeY=2)
         self.EL_LEVEL_V_01=CustomText(master=ACU_F,parent=commma,X=200+diff,Y=50,text="0",text_size=26,sizeX=1,sizeY=2)
@@ -1649,7 +1844,7 @@ class LCU_Controller(customtkinter.CTkFrame):
         self.EL_LEVEL_VT_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_9,textcolor="DarkSlateGray2",X=a+d,Y=-150,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10P,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         self.EL_LEVEL_VO_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VT_F,textcolor="DarkSlateGray2",X=a,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl1P,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         self.EL_LEVEL_V01_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VO_F,textcolor="DarkSlateGray2",X=a+100,Y=50,text="↑",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl01P,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
-        self.EL_LEVEL_PLUS_B=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VT_F,textcolor="DarkSlateGray2",X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        self.EL_LEVEL_PLUS_B=CustomButton(master=ACU_F,com=self.changeElSign2Plus,parent=self.EL_LEVEL_VT_F,textcolor="DarkSlateGray2",X=-1*a,Y=50,text="+",text_size=10,sizeX=1,sizeY=1,cornerradius=0,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         b=100
         self.EL_LEVEL_VTM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_V_9,textcolor="DarkSlateGray2",X=a+d,Y=300,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl10M,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         self.EL_LEVEL_VOM_F=CustomButton(master=ACU_F,parent=self.EL_LEVEL_VTM_F,textcolor="DarkSlateGray2",X=a,Y=50,text="↓",text_size=10,sizeX=1,sizeY=1,cornerradius=0,com=self.changeEl1M,fg=ACU_F.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
@@ -1883,34 +2078,7 @@ class ACU_GUI(customtkinter.CTk):
         
     def Nothig(self):
         print("")
-    
-    def MonitorComPorts(self):
-        before_com_list=[]
-        before_com_list=(copy.deepcopy(self.COM_LIST))  
-        self.COM_LIST=copy.deepcopy(self.ACU_Monitor.BackEnd.getSerialPorts())
-        isSelecedComInList=False
-        somethingChange=False
-        if set(before_com_list)!=set(self.COM_LIST):
-            if len(before_com_list)>0 and len(self.COM_LIST)>0:
-                if self.SELECTED_COM in self.COM_LIST:
-                    index=self.COM_LIST.index(self.SELECTED_COM)
-                    first_value=self.COM_LIST[0]
-                    selectedComIndex=self.COM_LIST[index]
-                    self.COM_LIST[0]=self.SELECTED_COM
-                    self.COM_LIST[index]=first_value
-            self.COM_F.setValue(value=self.COM_LIST)
-        #self.SELECTED_COM=self.COM_F.combbox.get()
-        #if self.SELECTED_COM=="Disconected" or self.SELECTED_COM=="":
-            #self.COM_STATS_F.label.configure(text="Disconected",bg_color="red")
-        '''
-        else:
-            if self.ACU_Monitor.BackEnd.comTest(PORT=self.SELECTED_COM):
-                self.COM_STATS_F.label.configure(text=(self.SELECTED_COM+" is Enable!"),bg_color="#3B8ED0")
-            else:
-                self.COM_STATS_F.label.configure(text=(self.SELECTED_COM+" is Disable!"),bg_color="red")
-        '''
-        self.COM_F.after(10,self.MonitorComPorts)
-        
+            
     def setSlaveModeFlag(self):
         global IS_INDIVISUAL_MODE
         global IS_SLAVE_MODE
@@ -2078,11 +2246,31 @@ class ACU_GUI(customtkinter.CTk):
     Timescale=None
     Planets=None
     
+    ClearBtm=None
+    
+    def setSelectClear(self):
+        if isinstance(self.InputFileBtm,CustomBase):
+            self.InputFileBtm.setStats(stats=False,mode="OnlyColor")
+        if isinstance(self.MercryBTM,CustomBase):
+            self.MercryBTM.setStats(stats=False,mode="OnlyColor")
+        if isinstance(self.VenusBtm,CustomBase):
+            self.VenusBtm.setStats(stats=False,mode="OnlyColor")
+            
+        if isinstance(self.MoonBtm,CustomBase):
+            self.MoonBtm.setStats(stats=False,mode="OnlyColor")
+        if isinstance(self.MarsBtm,CustomBase):
+            self.MarsBtm.setStats(stats=False,mode="OnlyColor")
+        if isinstance(self.JupiterBtm,CustomBase):
+            self.JupiterBtm.setStats(stats=False,mode="OnlyColor")
+        if isinstance(self.Saturn,CustomBase):
+            self.Saturn.setStats(stats=False,mode="OnlyColor")
+
     
     def setTrashBtm(self):
         bd="DarkSlateGray2"
         if self.StarSelectWindow is not None and self.InputFileBtm is not None:
             self.TrashBtm=CustomButton(parent=self.InputFileBtm,putWindow=self.StarSelectWindow,master=self,image_name="batu.png",text="",X=90,Y=10,sizeX=3,sizeY=3,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=2,bd_color=bd,com=self.disposeRaDecFile)
+    
     
     def disposeTrashBtm(self):
         if isinstance(self.TrashBtm,CustomButton):
@@ -2106,7 +2294,7 @@ class ACU_GUI(customtkinter.CTk):
         
     def whenPushVenusBTM(self):
         self.VenusBtm.setStats(stats=True)
-        self.setPlanetRaDec(name="venus")
+        self.setPlanetRaDec(name="Venus")
         
     def isincoord(self,dict):
         ra=("ra" in dict)
@@ -2195,6 +2383,15 @@ class ACU_GUI(customtkinter.CTk):
             re.update(star=name,coordmode=Coordinate.StarName)
             self.setDataFile(re,True)
     
+    def isPlanetSelected(self):
+        re=False
+        if len(self.StarFiles)>0:
+            if self.StarFiles["coordmode"] is Coordinate.StarName:
+                re=True
+            if self.StarFiles["coordmode"] is Coordinate.J2000:
+                re=True
+        return re
+        
     filename=""
     def whenPushInputFileBtmBTM(self):
         #self.InputFileBtm.setStats(stats=True)
@@ -2229,8 +2426,6 @@ class ACU_GUI(customtkinter.CTk):
             coord=self.isincoord(datalist)
             dec1=0
             dec2=0
-            #planets = load('de421.bsp')
-            #ts = load.timescale(builtin=True)
             Coords={}
             if isinstance(coord,Coordinate):
                 if coord is Coordinate.B1950:
@@ -2295,7 +2490,7 @@ class ACU_GUI(customtkinter.CTk):
         Mabstats=False
         Jptstats=False
         Satstats=False
-        if filelen>0:
+        if filelen>0:#setSelectClear
             self.AppearObserStopButton()
             if self.InputFileBtm is not None:
                 Ifbstats=self.InputFileBtm.getStats()
@@ -2307,6 +2502,8 @@ class ACU_GUI(customtkinter.CTk):
         BtmSizeX=16
         BtmSizeY=13
         TextPosY=130
+        
+        self.ClearBtm=CustomButton(parent=Text,putWindow=window,master=self,text="CLEAR",X=420,Y=50,sizeX=10,sizeY=7,cornerradius=0,text_size=20,fg=self.cget("fg_color"),hg="DarkSlateGray2",textcolor="DarkSlateGray2",bd_width=2,bd_color=bd,com=self.setSelectClear)
         
         if self.IsFileInpted is False:
             self.InputFileBtm=CustomButton(parent=Text,buttonMode=ButtonMode.Normal,putWindow=window,master=self,image_name="addfile.png",text="",X=50,Y=250,sizeX=BtmSizeX,sizeY=BtmSizeY,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=2,bd_color=bd,com=self.whenPushInputFileBtmBTM)
@@ -2385,6 +2582,68 @@ class ACU_GUI(customtkinter.CTk):
             self.TEST_BUTTON.destroy()
         self.MOUCE_POS_X=x
         self.MOUCE_POS_Y=y
+
+#----Relayted Backend2Frontend Program-----------------
+    def getAzMode(self):
+        global AZ_MODE
+        global BFR_AZ_MODE
+        return AZ_MODE,BFR_AZ_MODE
+
+    def getElMode(self):
+        global EL_MODE
+        global BFR_EL_MODE
+        return EL_MODE,BFR_EL_MODE
+
+    def getPlanetCoords(self):
+        re=None
+        if isinstance(self.InputFileBtm,CustomBase):
+            if self.InputFileBtm.getStats():
+                re=self.StarFiles
+        return re
+
+    def getAzRot(self):
+        global ANTTENA_AZMIZTH_PROG
+        return ANTTENA_AZMIZTH_PROG/10000
+
+    def getElRot(self):
+        global ANTENA_ELEVATION_PROG
+        return ANTENA_ELEVATION_PROG/10000
+
+    def setAzRot(self,rot):
+        global ANTTENA_AZMIZTH
+        ANTTENA_AZMIZTH=rot*10000
+        
+    def setElRot(self,rot):
+        global ANTENA_ELEVATION
+        ANTENA_ELEVATION=rot*10000
+
+    def setNotConect(self,flag):
+        global NotConect
+        NotConect=flag
+        
+    def setConect(self,flag):
+        global Conect
+        Conect=flag
+
+    def setAnttenaMoving(self,flag):
+        global AnttenaMoving
+        AnttenaMoving=flag
+        
+    def setAzMoving(self,flag):
+        global AZ_MOVING
+        AZ_MOVING=flag
+        
+    def setElMoving(self,flag):
+        global EL_MOVING
+        EL_MOVING=flag
+
+    def updateAzValues(self,progRot=0,realRot=0,rotdiff=0,rotSpeed=0):
+        self.LCU.updateAz(progRot=progRot,realRot=realRot,rotdiff=rotdiff,rotSpeed=rotSpeed,roundNum=5)
+        
+    def updateElValues(self,progRot=0,realRot=0,rotdiff=0,rotSpeed=0):
+        self.LCU.updateEl(progRot=progRot,realRot=realRot,rotdiff=rotdiff,rotSpeed=rotSpeed,roundNum=5)   
+#----Relayted Backend2Frontend Program END-----------------
+
 
 #--AdvancedGUI--
 
@@ -2517,6 +2776,7 @@ class ACU_GUI(customtkinter.CTk):
         
         #gif_name="hogehoge",gif_time=60
         self.LCU=LCU_Controller(master=self)
+        self.LCU.ACU=self
 
         #self.setIndivMode()
         
