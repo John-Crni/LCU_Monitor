@@ -291,6 +291,8 @@ class CustomBase(customtkinter.CTkFrame):
     def UPDATEGUI(self):
         self.directBody.configure(self.getWindow())
         #self.directBody.configure(text=self.text)
+    
+    IMAGE_NAME="NONE"
     def update_gui(self,image_name="none",gif_name="none",gif_time=1.1,text="none_text",text_size=1.1,X=1.1,Y=1.1,sizeX=1.1,sizeY=1.1,bd_width=1.1,bd_color="none",fg="none",bg="none",textcolor="none",startwithParent=True,endwithParent=True):
         global IMAGE_PATH
         #if image_name!="none":
@@ -371,9 +373,11 @@ class CustomBase(customtkinter.CTkFrame):
 
         w=self.sizex
         h=self.sizey
+       # '''
         if image_name!="none":
             self.image = customtkinter.CTkImage(light_image=Image.open(os.path.join(IMAGE_PATH, image_name)),
                                                  dark_image=Image.open(os.path.join(IMAGE_PATH, image_name)), size=(20, 20))
+       # '''
         if self.inited is False:
             self.setGUI()
         else:
@@ -391,6 +395,7 @@ class CustomBase(customtkinter.CTkFrame):
         self.load_gifFrames2(path=gif_name+".gif")
         #self.finalGifInit()
         self.setGifFrames()
+        self.IMAGE_NAME=image_name
         if image_name!="none":
             img = customtkinter.CTkImage(light_image=Image.open(os.path.join(IMAGE_PATH, image_name)),
                                                  dark_image=Image.open(os.path.join(IMAGE_PATH, image_name)), size=(self.sizex, self.sizey))
@@ -1530,12 +1535,8 @@ class LCU_Controller(customtkinter.CTkFrame):
         global AZ_MODE
         global BFR_AZ_MODE
         
-        error=False
-        if self.ACU.isPlanetSelected():
-            messagebox.showinfo('エラー', "天体座標が既に選択されています。マニュアルモードにするためには選択中の天体を削除してください")
-            error=True
 
-        if AZ_MODE is not AxisMode.ManuSet and AZ_MODE is not AxisMode.Manu and AZ_MODE is not AxisMode.ManuStop and not error:
+        if AZ_MODE is not AxisMode.ManuSet and AZ_MODE is not AxisMode.Manu and AZ_MODE is not AxisMode.ManuStop:
             BFR_AZ_MODE=AZ_MODE
             AZ_MODE=AxisMode.Manu
             ANTTENA_AZMIZTH_PROG=ANTTENA_AZMIZTH
@@ -1558,14 +1559,19 @@ class LCU_Controller(customtkinter.CTkFrame):
     def setAzManSet(self):
         global AZ_MODE
         global BFR_AZ_MODE
-        global ANTTENA_AZMIZTH_PROG   
-        BFR_AZ_MODE=AZ_MODE     
-        AZ_MODE=AxisMode.ManuSet
-        self.setAZ_LEVEL(frag=False)#manualの数字メモリ
-        self.Az_MODE_MANU_SET_B.setStats(stats=False,mode="Strong")
-        self.Az_MODE_MANU_STOP_B.setStats(stats=True,mode="Strong")
-        self.Az_MODE_PROG_B.setStats(stats=False,mode="Strong")
-        self.Az_MODE_STBY_B.setStats(stats=False,mode="Strong")
+        global ANTTENA_AZMIZTH_PROG
+        error=False
+        if self.ACU.isPlanetSelected():
+            messagebox.showinfo('エラー', "天体座標が既に選択されています。マニュアルモードにするためには選択中の天体を削除してください")
+            error=True
+        if not error:
+            BFR_AZ_MODE=AZ_MODE     
+            AZ_MODE=AxisMode.ManuSet
+            self.setAZ_LEVEL(frag=False)#manualの数字メモリ
+            self.Az_MODE_MANU_SET_B.setStats(stats=False,mode="Strong")
+            self.Az_MODE_MANU_STOP_B.setStats(stats=True,mode="Strong")
+            self.Az_MODE_PROG_B.setStats(stats=False,mode="Strong")
+            self.Az_MODE_STBY_B.setStats(stats=False,mode="Strong")
 
     def setAzStby(self):
         '''
@@ -1645,12 +1651,8 @@ class LCU_Controller(customtkinter.CTkFrame):
         global ANTENA_ELEVATION_PROG
         global EL_MODE
         global BFR_EL_MODE
-        error=False
-        if self.ACU.isPlanetSelected():
-            messagebox.showinfo('エラー', "天体座標が既に選択されています。マニュアルモードにするためには選択中の天体を削除してください")
-            error=True
             
-        if (EL_MODE is not AxisMode.ManuSet and EL_MODE is not AxisMode.Manu and EL_MODE is not AxisMode.ManuStop) and not error:
+        if (EL_MODE is not AxisMode.ManuSet and EL_MODE is not AxisMode.Manu and EL_MODE is not AxisMode.ManuStop):
             BFR_EL_MODE=EL_MODE
             EL_MODE=AxisMode.Manu
             ANTENA_ELEVATION_PROG=ANTENA_ELEVATION
@@ -1674,13 +1676,18 @@ class LCU_Controller(customtkinter.CTkFrame):
         global EL_MODE
         global BFR_EL_MODE
         global ANTENA_ELEVATION_PROG  
-        BFR_EL_MODE=EL_MODE      
-        EL_MODE=AxisMode.ManuSet
-        self.setEL_LEVEL(frag=False)#manualの数字メモリ
-        self.EL_MODE_MANU_SET_B.setStats(stats=False,mode="Strong")
-        self.EL_MODE_MANU_STOP_B.setStats(stats=True,mode="Strong")
-        self.EL_MODE_PROG_B.setStats(stats=False,mode="Strong")
-        self.EL_MODE_STBY_B.setStats(stats=False,mode="Strong")
+        error=False
+        if self.ACU.isPlanetSelected():
+            messagebox.showinfo('エラー', "天体座標が既に選択されています。マニュアルモードにするためには選択中の天体を削除してください")
+            error=True
+        if not error:
+            BFR_EL_MODE=EL_MODE      
+            EL_MODE=AxisMode.ManuSet
+            self.setEL_LEVEL(frag=False)#manualの数字メモリ
+            self.EL_MODE_MANU_SET_B.setStats(stats=False,mode="Strong")
+            self.EL_MODE_MANU_STOP_B.setStats(stats=True,mode="Strong")
+            self.EL_MODE_PROG_B.setStats(stats=False,mode="Strong")
+            self.EL_MODE_STBY_B.setStats(stats=False,mode="Strong")
 
 
     def setELStby(self):
@@ -1856,6 +1863,7 @@ class LCU_Controller(customtkinter.CTkFrame):
 class ACU_GUI(customtkinter.CTk):
     
     def __init__(self):
+        super().__init__(master)
         self.Timescale=load.timescale(builtin=True)
         self.Planets=load('de421.bsp')
 #+++++++++++++++++++++++++++++++++++++
@@ -1965,15 +1973,15 @@ class ACU_GUI(customtkinter.CTk):
 
 #----When Annntena Conected----------------#
     def Setconect2Antenna(self):
+        if self.Mypc2AcuDis is not None:
+            self.Mypc2AcuDis.setDeath()
+        if self.Acu2MypcDis is not None:
+            self.Acu2MypcDis.setDeath()
         self.Antenapic.setStats(stats=True)
         self.Acupic.setStats(stats=True)
         self.Antena2Acugif.setStats(stats=True)
         self.Acu2Mypcgif.setStats(stats=True)
         self.Mypc2Acugif.setStats(stats=True)
-        if self.Mypc2AcuDis is not None:
-            self.Mypc2AcuDis.setDeath()
-        if self.Acu2Mypcgif is not None:
-            self.Acu2Mypcgif.setDeath()
         if isinstance(self.SLAVE_MODE_BUTTOM,CustomBase):
             self.SLAVE_MODE_BUTTOM.setStats(stats=True)
             self.INDIV_MODE_BUTTOM.setStats(stats=True)
@@ -1984,7 +1992,10 @@ class ACU_GUI(customtkinter.CTk):
 
 #----When Annntena MOVING----------------#
     def SetAntennaMoving(self):
-        self.Antenapic=CustomFlame(master=self.AntenaBG,gif_name="movingnew2",fg="transparent",gif_time=100,text="",X=20,Y=50,sizeX=38,sizeY=80,cornerradius=0)
+        if self.Antenapic.IMAGE_NAME=="antena.png":
+            self.Antenapic.setStats(stats=True)
+        else:
+            self.Antenapic.update_gui(image_name="antena.png")
         self.Acupic.setStats(stats=True)
         self.Antena2Acugif.setStats(stats=True)
         self.Acu2Mypcgif.setStats(stats=True)
@@ -1992,7 +2003,7 @@ class ACU_GUI(customtkinter.CTk):
         if self.Mypc2AcuDis is not None:
             self.Mypc2AcuDis.setDeath()
         if self.Acu2Mypcgif is not None:
-            self.Acu2Mypcgif.setDeath()
+            self.Acu2MypcDis.setDeath()
         if isinstance(self.SLAVE_MODE_BUTTOM,CustomBase):
             self.SLAVE_MODE_BUTTOM.setStats(stats=True)
             self.INDIV_MODE_BUTTOM.setStats(stats=True)
@@ -2248,14 +2259,32 @@ class ACU_GUI(customtkinter.CTk):
     
     ClearBtm=None
     
+    SelectedPlanetApp=None
+    
+    def getSomeStarSelected(self):
+        re=False
+        if isinstance(self.MercryBTM,CustomBase):
+            re=re or self.MercryBTM.getStats()
+        if isinstance(self.VenusBtm,CustomBase):
+            re=re or self.VenusBtm.getStats()
+        if isinstance(self.MoonBtm,CustomBase):
+            re=re or self.MoonBtm.getStats()
+        if isinstance(self.MarsBtm,CustomBase):
+            re=re or self.MarsBtm.getStats()
+        if isinstance(self.JupiterBtm,CustomBase):
+            re=re or self.JupiterBtm.getStats()
+        if isinstance(self.Saturn,CustomBase):
+            re=re or self.Saturn.getStats()
+        return re
+    
     def setSelectClear(self):
+        self.SelectedPlanetApp.update_gui(text="SELECT:NONE")
         if isinstance(self.InputFileBtm,CustomBase):
             self.InputFileBtm.setStats(stats=False,mode="OnlyColor")
         if isinstance(self.MercryBTM,CustomBase):
             self.MercryBTM.setStats(stats=False,mode="OnlyColor")
         if isinstance(self.VenusBtm,CustomBase):
             self.VenusBtm.setStats(stats=False,mode="OnlyColor")
-            
         if isinstance(self.MoonBtm,CustomBase):
             self.MoonBtm.setStats(stats=False,mode="OnlyColor")
         if isinstance(self.MarsBtm,CustomBase):
@@ -2271,13 +2300,13 @@ class ACU_GUI(customtkinter.CTk):
         if self.StarSelectWindow is not None and self.InputFileBtm is not None:
             self.TrashBtm=CustomButton(parent=self.InputFileBtm,putWindow=self.StarSelectWindow,master=self,image_name="batu.png",text="",X=90,Y=10,sizeX=3,sizeY=3,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=2,bd_color=bd,com=self.disposeRaDecFile)
     
-    
     def disposeTrashBtm(self):
         if isinstance(self.TrashBtm,CustomButton):
             self.TrashBtm.setDeath()
     
     def disposeRaDecFile(self):
         if self.IsFileInpted:
+            self.SelectedPlanetApp.update_gui(text="SELECT:NONE")
             self.InputFileBtm.setButtonMode(mode=ButtonMode.Normal)
             self.InputFileBtm.setStats(stats=False,mode="OnlyColor")
             self.StarFiles.clear()
@@ -2289,12 +2318,29 @@ class ACU_GUI(customtkinter.CTk):
         pass
     
     def whenPushMercryBTM(self):
-        self.MercryBTM.setStats(stats=True)
-        self.setPlanetRaDec(name="mercry")
+        self.MercryBTM.setStats(stats=True)#mercry
+        self.setPlanetRaDec(name='mercry')
         
     def whenPushVenusBTM(self):
         self.VenusBtm.setStats(stats=True)
-        self.setPlanetRaDec(name="Venus")
+        self.setPlanetRaDec(name="venus")
+        
+    def whenPushMoonBTM(self):
+        self.MoonBtm.setStats(stats=True)#mercry
+        self.setPlanetRaDec(name='moon')
+        
+    def whenPushMarsBTM(self):
+        self.MarsBtm.setStats(stats=True)
+        self.setPlanetRaDec(name="mars")
+        
+    def whenPushJupiterBTM(self):
+        self.JupiterBtm.setStats(stats=True)#mercry
+        self.setPlanetRaDec(name='jupiter')
+        
+    def whenPushSaturnBTM(self):
+        self.Saturn.setStats(stats=True)
+        self.setPlanetRaDec(name="saturn")
+
         
     def isincoord(self,dict):
         ra=("ra" in dict)
@@ -2375,21 +2421,28 @@ class ACU_GUI(customtkinter.CTk):
 
     def setPlanetRaDec(self,name="sun"):
         re={"star":None,"coordmode":None}
+        self.Planets = load('de421.bsp')  
         try:
-            planet=planets[name]
+            planet=self.Planets[name]
         except:
             messagebox.showinfo('エラー', "天体の名前が正しくないか、ソフトのデータベースに記録されていない天体です")
         else:
             re.update(star=name,coordmode=Coordinate.StarName)
-            self.setDataFile(re,True)
+            self.setDataFile(coorddata=re,IsStar=True)
+            self.SelectedPlanetApp.update_gui(text=name.upper()+"_SELECTED")
     
     def isPlanetSelected(self):
         re=False
-        if len(self.StarFiles)>0:
-            if self.StarFiles["coordmode"] is Coordinate.StarName:
-                re=True
-            if self.StarFiles["coordmode"] is Coordinate.J2000:
-                re=True
+        if isinstance(self.InputFileBtm,CustomBase):
+            if isinstance(self.StarFiles,dict) and self.InputFileBtm.getStats():
+                if self.StarFiles["coordmode"] is Coordinate.StarName:
+                    re=True
+                if self.StarFiles["coordmode"] is Coordinate.J2000:
+                    re=True
+            elif self.getSomeStarSelected() and isinstance(self.StarFiles,dict):
+                if self.StarFiles["coordmode"] is Coordinate.StarName:
+                    re=True
+
         return re
         
     filename=""
@@ -2472,8 +2525,17 @@ class ACU_GUI(customtkinter.CTk):
             #ButtonMode.Radio
             self.InputFileBtm.setButtonMode(mode=ButtonMode.Radio)
             self.InputFileBtm.setStats(stats=True)
+            self.SelectedPlanetApp.update_gui(text="FILE_SELECTED")
     
     def AppearObserbStarSettingWindow(self):
+        
+        global AZ_MODE
+        global EL_MODE
+        
+        if AZ_MODE is AxisMode.ManuSet or EL_MODE is AxisMode.ManuSet:
+            messagebox.showinfo('エラー', "AzかElがマニュアルで動かされています\n天体を選択するためにはMANUのSTOPを押すか、止まるまで待ってください")
+            return        
+
         bd="DarkSlateGray2"
         x,y=self.GetWindowPos()
         #        window=CustomWindow(master=self,sizex=400,sizey=400,posx=x+1110,posy=y,isModal=True)
@@ -2491,7 +2553,6 @@ class ACU_GUI(customtkinter.CTk):
         Jptstats=False
         Satstats=False
         if filelen>0:#setSelectClear
-            self.AppearObserStopButton()
             if self.InputFileBtm is not None:
                 Ifbstats=self.InputFileBtm.getStats()
             if self.MercryBTM is not None:
@@ -2597,8 +2658,11 @@ class ACU_GUI(customtkinter.CTk):
     def getPlanetCoords(self):
         re=None
         if isinstance(self.InputFileBtm,CustomBase):
-            if self.InputFileBtm.getStats():
-                re=self.StarFiles
+            if isinstance(self.StarFiles,dict):
+                if self.InputFileBtm.getStats():
+                    re=self.StarFiles
+                elif self.getSomeStarSelected():
+                    re=self.StarFiles
         return re
 
     def getAzRot(self):
@@ -2671,6 +2735,7 @@ class ACU_GUI(customtkinter.CTk):
         
 #---ApperGUI-----------------------------------
     def ApperGUI(self):
+        
         global IS_INDIVISUAL_MODE
         global IS_SLAVE_MODE
         
@@ -2705,7 +2770,7 @@ class ACU_GUI(customtkinter.CTk):
         #self.AGUIBG=CustomFlame(master=self,sizeX=74,sizeY=35,corner=0,text="",X=38,Y=25,fg=AGUIBGcolor,cornerradius=10,bd_width=1,bd_color=bd)
         
         self.AGUISettingButtom=CustomButton(master=self.AGUIBG,image_name="setting.png",text="",X=97,Y=8,sizeX=3,sizeY=12,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd,com=self.AppearAntennaSettingWindow)
-        self.InstallProgBtm=CustomButton(master=self.AGUIBG,parent=self.AGUISettingButtom,image_name="casette.png",text="",X=-200,Y=50,sizeX=7,sizeY=12,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
+        #self.InstallProgBtm=CustomButton(master=self.AGUIBG,parent=self.AGUISettingButtom,image_name="casette.png",text="",X=-200,Y=50,sizeX=7,sizeY=12,cornerradius=0,text_size=1,fg=self.cget("fg_color"),hg="DarkSlateGray2",bd_width=1,bd_color=bd)
         
         
         self.Acu2Mypcgif=CustomFlame(master=self.AGUIBG,gif_name="rightStripe",gif_time=40,fg=AGUIBGcolor,text="",X=70,Y=80,sizeX=50,sizeY=10,cornerradius=0)
@@ -2724,6 +2789,7 @@ class ACU_GUI(customtkinter.CTk):
         self.Antenapic=CustomFlame(master=self.AntenaBG,gif_name="cute",fg="transparent",gif_time=100,text="",X=32,Y=53,sizeX=38,sizeY=80,cornerradius=0)
         
         self.ObserbSettingBtm=CustomButton(master=self.AntenaBG,parent=self.Antenapic,hg="DarkSlateGray2",image_name="star.png",text="",sizeX=10,sizeY=15,X=-17,Y=-3,fg=AntenaBGcolor,cornerradius=0,com=self.AppearObserbStarSettingWindow)
+        self.SelectedPlanetApp=CustomText(master=self.AntenaBG,parent=self.ObserbSettingBtm,text="SELECT:NONE",text_size=20,X=230,Y=25,sizeX=20,sizeY=6)
         
         self.Acupic=CustomFlame(master=self.AntenaBG,parent=self.Antenapic,image_name="PC.png",fg=AntenaBGcolor,text="",X=180,Y=70,sizeX=32,sizeY=50,cornerradius=0)
         
@@ -2742,7 +2808,7 @@ class ACU_GUI(customtkinter.CTk):
         
         self.UctTime_F = CustomButton(master=self,textcolor="DarkSlateGray2",Timermode=True,parent=self.LstTime_F,text=time.UTCformat,text_size=30,sizeY=5,sizeX=10,X=250,Y=50,fg=self.cget("fg_color"),bd_width=2,bd_color="DarkSlateGray2",cornerradius=0)
         self.UctTime_F.setDisable()
-                #self.UctTime_F.after(1000,self.updateTimer)  
+        self.UctTime_F.after(1000,self.updateTimer)  
         #self.TEST_BUTTON=AnotherWIndowUIC(UI=None,Stats=True) 
         
         

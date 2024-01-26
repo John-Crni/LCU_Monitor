@@ -43,6 +43,10 @@ class CommandMode(Enum):
     ReadAxis=2
     ReadAxisMode=3
     UpdateAxisMode=4
+    TurnOnOffPed=5
+    ReadDgIoPort=7
+    ReadAxisLbl=8
+    ReadStatsSoftKeys=9
     
 
 class AxisMode(Enum):
