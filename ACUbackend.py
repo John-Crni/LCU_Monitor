@@ -684,7 +684,7 @@ class AnntenaAgent():
     IsInitialServo=False
     IsInitialACU=False
     
-    Result=""
+    Result="ssss"
     
     On=False
     Off=True
@@ -703,6 +703,19 @@ class AnntenaAgent():
     
     AzFistPos=0
     ElFirstPos=0
+    
+    def getResult(self):
+        re=""
+        if isinstance(self.Result,bytes):
+            re.encode('ascii')
+            re=self.Result
+        else:
+            re=""
+            re=re.encode('ascii')
+
+
+
+        return re
     
     def __init__(self,Anntena):
         if isinstance(Anntena,AnntenaMovement):
@@ -846,6 +859,11 @@ class AnntenaAgent():
                                 self.ElRad=split2[1]
                         re="@8"
         print("[",type(self),"]RE:",re)
+        T=len(re)*0.001
+        if re=="@?":
+            T=0.1
+        print("ACUWRITE=",T)
+        #time.sleep(T)
         self.Result=re.encode('ascii')
     
 class ComClassBase():
@@ -1139,15 +1157,13 @@ class AxisModeCom(ComClassBase):
                 az=self.getMessageContents(AzEl[0])
                 el=self.getMessageContents(AzEl[1])
                 self.setMessageContents({"Az":az[2],"El":el[2]})
-            
-        
+             
     def getReceivedMessageContents(self):
         super(AxisModeCom,self).getReceivedMessageContents()
         return self.getContents()
 
 class PositionCom(ComClassBase):
-    
-    
+     
     def __init__(self,serialclass=None):
         super().__init__(serialclass=serialclass)
 
@@ -1185,7 +1201,6 @@ class PositionCom(ComClassBase):
                 AzEl=self.getSplitText(text=deleateInitial)
                 self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=AzEl[0],resolution=360),"El":self.convertHex2Deg(sbca_value=AzEl[1],resolution=360)})
 
-        
     def getReceivedMessageContents(self):
         super(PositionCom,self).getReceivedMessageContents()
         return self.getContents()
@@ -1434,7 +1449,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     
     #----
     CONTROL_MODE=ACUControlMode.Slave
-    #SLAVE=PC2ACU,INDIVISUAL onlyACU
     #----
     
     def getData(self):
@@ -1483,7 +1497,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             self.ACUmonitor.FrontEnd.setAzMoving(flag=False)
             self.ACUmonitor.FrontEnd.setElMoving(flag=False)
 
-            
     def setUpAntenna(self):
         if not self.setUped:
             if self.IscheckPowerOn is None:
@@ -1555,7 +1568,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             re+=str(hexvalue[i])
         return re
 
-
     def monitorAzmode(self):
         az,bfr=self.ACUmonitor.FrontEnd.getAzMode()
         if self.AZ_MODE is None and self.BFR_AZ_MODE is None:
@@ -1576,7 +1588,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             self.EL_MODE=az
         print("EL_NOW:",self.AZ_MODE,"BFR_EL:",self.BFR_AZ_MODE)
 
-        
     def ischangeAz2notStby(self):
         return self.BFR_AZ_MODE is AxisMode.Stby and self.AZ_MODE is not AxisMode.Stby
     
@@ -1588,7 +1599,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     
     def ischangeEl2Stby(self):
         return self.BFR_EL_MODE is not AxisMode.Stby and self.EL_MODE is AxisMode.Stby
-
 
     def getAzmanualRot(self):
         print("AZ_MANU_SELECTED",self.ACUmonitor.FrontEnd.getAzRot())
@@ -1604,8 +1614,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     def setElValues(self,progRot=0,realRot=0,rotdiff=0,rotSpeed=0):
         self.ACUmonitor.FrontEnd.updateElValues(progRot=progRot,realRot=realRot,rotdiff=rotdiff,rotSpeed=rotSpeed)
 
-     
-    
     def setAz2StbyCom(self):
         #self.AzStatsManager.setStatsCom(com="1000")
         print("setAz2StbyCom")
@@ -1676,10 +1684,33 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             self.AxisComStats=CommandMode.ReadAxis
         elif isinstance(self.AxisComStats,CommandMode):
             if self.AxisComStats is CommandMode.ReadAxis:
-                self.AxisComStats=CommandMode.UpdateAxis
+                self.AxisComStats=CommandMode.ReadAxisMode
+            elif self.AxisComStats is CommandMode.ReadAxisMode:
+                self.AxisComStats=CommandMode.UpdateAxis                
             elif self.AxisComStats is CommandMode.UpdateAxis:
+                if self.flag:
+                    self.flag=False
+                    end = time.time()  # 現在時刻（処理完了後）を取得
+                    time_diff = end - self.start  # 処理完了後の時刻から処理開始前の時刻を減算する
+                    print("DIFF=",time_diff)  # 処理にかかった時間データを使用
+                else:
+                    self.flag=True
+                    self.start = time.time()  # 現在時刻（処理開始前）を取得
+                    print("DIFF_START!")
+
                 self.AxisComStats=CommandMode.ReadAxis
         return self.AxisComStats
+    
+        """
+                        if self.flag:
+                            self.flag=False
+                            end = time.time()  # 現在時刻（処理完了後）を取得
+                            time_diff = end - self.start  # 処理完了後の時刻から処理開始前の時刻を減算する
+                            print("DIFF=",time_diff)  # 処理にかかった時間データを使用
+                        else:
+                            self.flag=True
+                            self.start = time.time()  # 現在時刻（処理開始前）を取得
+        """
     
     def executeCommand(self,kind=None,comvalue=""):
         if isinstance(kind,CommandMode) and comvalue!="" and not self.EXECUTED:
@@ -1724,6 +1755,64 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     bfr_eldiff=0
     azdiff=0
     eldiff=0
+    
+    SUM=0
+    time_diff=0
+    start=0
+
+    flag=False
+    def SerialFunc(self):
+        super(AnntenaController,self).SerialFunc()
+        self.readCommand()
+        self.setUpAntenna()
+        if self.setUped:
+            if self.READED:
+                self.monitorAzmode()
+                self.monitorElmode()
+                if self.AzorEl2AxisModeChange():#AzかElの状態が変わったことを示す
+                    if self.ischangeAz2Stby():
+                        self.setAz2StbyCom()
+                    if self.ischangeEl2Stby():
+                        self.setEl2StbyCom()
+                    if self.ischangeAz2notStby():
+                        self.setAz2ManuCom()
+                    if self.ischangeEl2notStby():
+                        self.setEl2ManuCom()
+                else:#AzとELはそのまま
+                    do=self.getwhatdoAxisCom()
+                    if do is CommandMode.ReadAxis:
+                        self.executeAxisRead()
+                    elif do is CommandMode.ReadAxisMode:
+                        self.executeCommand(kind=CommandMode.ReadAxisMode,comvalue="@8MOD R2")
+                    elif self.CONTROL_MODE is ACUControlMode.Slave:
+                        planet_coords=self.ACUmonitor.FrontEnd.getPlanetCoords()
+                        Az,El=self.getAzELrot(planet_coords)
+                        azrot=self.AzStatsManager.getRealRot()
+                        elrot=self.ElStatsManager.getRealRot()
+                        
+                        if Az is None and self.AZ_MODE is not AxisMode.Prog:
+                            if self.AZ_MODE is AxisMode.ManuSet:
+                                Az=self.getAzmanualRot()
+                                if Az<0:
+                                    Az%=360
+                                    Az+360
+                            if self.BFR_AZ_MODE is AxisMode.ManuSet and self.AZ_MODE is AxisMode.ManuStop or (self.BFR_AZ_MODE is AxisMode.Prog and self.AZ_MODE is AxisMode.Manu):
+                                Az=azrot
+                        
+                        if El is None and self.EL_MODE is not AxisMode.Prog:
+                            if self.EL_MODE is AxisMode.ManuSet:
+                                El=self.getElmanualRot()
+                            if self.BFR_EL_MODE is AxisMode.ManuSet and self.EL_MODE is AxisMode.ManuStop or (self.BFR_EL_MODE is AxisMode.Prog and self.EL_MODE is AxisMode.Manu):
+                                El=elrot
+                        
+                        if Az is None and El is None and self.AZ_MODE:
+                            self.executeAxisRead()
+                        else:
+                            self.executeAxisUpdate(azrot=(Az if Az is not None else azrot),elrot=(El if El is not None else elrot))
+                                                
+
+                        #"print(time_diff)  # 処理にかかった時間データを使用
+
     def readCommand(self):
         if isinstance(self.NowCommandKind,CommandMode) and isinstance(self.NowCommand,ComClassBase) and not self.READED and self.EXECUTED:
             stopstats=self.NowCommand.getStopstats()
@@ -1788,11 +1877,11 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                 
             elif not stopstats["isStop"] and not stopstats["byError"]:
                 if self.NowCommandKind is CommandMode.TurnOnOffPed or self.NowCommandKind is CommandMode.ReadDgIoPort:
-                    self.NowCommand.executeCommand(command="",isMustCheckMessage=True,ignoreTimes=2,getdata=self.serialInputter.data)
+                    self.NowCommand.executeCommand(command="",isMustCheckMessage=True,ignoreTimes=2,getdata=self.serialInputter.getdata())
                 if self.NowCommandKind is CommandMode.UpdateAxisMode or self.NowCommandKind is CommandMode.ReadAxisMode:
-                    self.NowCommand.executeCommand(command="",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
+                    self.NowCommand.executeCommand(command="",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.getdata())
                 if self.NowCommandKind is CommandMode.UpdateAxis or self.NowCommandKind is CommandMode.ReadAxis:
-                    self.NowCommand.executeCommand(command="",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
+                    self.NowCommand.executeCommand(command="",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.getdata())
             elif stopstats["byError"] and stopstats["isStop"]:
                 self.NowCommand.setStopExecute()
                 self.NowCommand.setEnableExecute()
@@ -1803,62 +1892,17 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                 print("ERROR!")
                 pass#ここにエラー時の処理を書く
 
-    def SerialFunc(self):
-        super(AnntenaController,self).SerialFunc()
-        self.readCommand()
-        self.setUpAntenna()
-        if self.setUped:
-            if self.READED:
-                self.monitorAzmode()
-                self.monitorElmode()
-                if self.AzorEl2AxisModeChange():#AzかElの状態が変わったことを示す
-                    if self.ischangeAz2Stby():
-                        self.setAz2StbyCom()
-                    if self.ischangeEl2Stby():
-                        self.setEl2StbyCom()
-                    if self.ischangeAz2notStby():
-                        self.setAz2ManuCom()
-                    if self.ischangeEl2notStby():
-                        self.setEl2ManuCom()
-                else:#AzとELはそのまま
-                    do=self.getwhatdoAxisCom()
-                    if do is CommandMode.ReadAxis:
-                        self.executeAxisRead()
-                    elif self.CONTROL_MODE is ACUControlMode.Slave:
-                        planet_coords=self.ACUmonitor.FrontEnd.getPlanetCoords()
-                        Az,El=self.getAzELrot(planet_coords)
-                        azrot=self.AzStatsManager.getRealRot()
-                        elrot=self.ElStatsManager.getRealRot()
-                        
-                        if Az is None and self.AZ_MODE is not AxisMode.Prog:
-                            if self.AZ_MODE is AxisMode.ManuSet:
-                                Az=self.getAzmanualRot()
-                                if Az<0:
-                                    Az%=360
-                                    Az+360
-                            if self.BFR_AZ_MODE is AxisMode.ManuSet and self.AZ_MODE is AxisMode.ManuStop or (self.BFR_AZ_MODE is AxisMode.Prog and self.AZ_MODE is AxisMode.Manu):
-                                Az=azrot
-                        
-                        if El is None and self.EL_MODE is not AxisMode.Prog:
-                            if self.EL_MODE is AxisMode.ManuSet:
-                                El=self.getElmanualRot()
-                            if self.BFR_EL_MODE is AxisMode.ManuSet and self.EL_MODE is AxisMode.ManuStop or (self.BFR_EL_MODE is AxisMode.Prog and self.EL_MODE is AxisMode.Manu):
-                                El=elrot
-                        
-                        if Az is None and El is None and self.AZ_MODE:
-                            self.executeAxisRead()
-                        else:
-                            self.executeAxisUpdate(azrot=(Az if Az is not None else azrot),elrot=(El if El is not None else elrot))
-                  
     def SerialWrite(self,text):#isinstance(self.Serial,serial):
         if self.Serial is not None and self.ControllMode is "REAL":
             ASCII=text.encode('ascii')#上記のコマンドをアスキーに変換しています pythonではByte型にこの時点でなっています
             self.Serial.write(ASCII)
         else:
+            #time.sleep(len(text)*0.001)
+            print("SerialWrite:",(len(text)*0.001))
             self.ACUAgent.setMessage(text.encode('ascii'))
             
     def readline(self):
-        return self.ACUAgent.Result
+        return self.ACUAgent.getResult()
         
     def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None,movent=None,testMode=False):
         super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType,inputter=inputter,testMode=testMode)
@@ -1876,8 +1920,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
         if testMode:
             self.ACUAgent=AnntenaAgent(movent)
 
-
-
 class InputRoopClass(AsyncedClass):
 
     data=None
@@ -1887,6 +1929,11 @@ class InputRoopClass(AsyncedClass):
     Myserial=None
     
     Mode="REAL" #or TEST
+    
+    def getdata(self):
+        re=self.data
+        self.data=""
+        return re
 
     def Async(self):
         if self.isSerialSet and isinstance(self.Myserial,serial.Serial):

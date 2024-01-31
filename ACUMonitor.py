@@ -22,7 +22,7 @@ class Start():
         ACU.FrontEnd.ACU_Monitor=ACU
         print(ACU.FrontEnd.NAME)
         
-        InputClass=ACUbackend.InputRoopClass(acu=ACU,sleepT=0.05)
+        InputClass=ACUbackend.InputRoopClass(acu=ACU,sleepT=0.001)
         AntenaAgent=ACUbackend.AnntenaMovement(acu=ACU,sleepT=0.1)
         ACU.setUpAsync2List(As=InputClass)
         ACU.setUpAsync2List(As=AntenaAgent)
