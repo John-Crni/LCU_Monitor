@@ -25,6 +25,9 @@ import unicodedata
 from NormalizedConstValues import CommandMode,AxisMode,StowMode,ACUControlMode,Coordinate
 import copy
 
+from multiprocessing import Process
+import multiprocessing
+
 class RadDiffCalc():
     Coord1=None
     Coord2=None
@@ -241,14 +244,33 @@ class AsyncedClass():
     isACUenable=False
     sleepTime=0.1
     message="None"
+
+    
     def __init__(self,ACU=None):
         self.ACUmonitor=ACU
         if self.ACUmonitor is not None:
             self.isACUenable=True
             print(self.__class__.__name__+"AsyncedClasss OK!")
+            
+    def killed_func(self):
+        pass
+
     def sleep(self):
         if self.sleepTime>0:
             time.sleep(float(self.sleepTime))
+
+class AsyncTest(AsyncedClass):
+    def killed_func(self):
+        super(AsyncTest,self).killed_func()
+        print(self.__class__.__name__,"KILLED!")
+    def Async(self):
+        print(self.__class__.__name__,self.message,type(self.ACUmonitor))
+        self.sleep()
+    def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
+        self.sleepTime=sleepT
+        self.message=message
+        self.master=ma
+        super().__init__(acu)
 
 class Serialcommunicator():
     Serial=None
@@ -402,7 +424,10 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
     mode=True
     timer=0
     funcok=False
+    Type=1
     #--TEST--
+    
+    
     
     def killed_func(self):
         super(Serialcommunicator4GeneralUse,self).killed_func()
@@ -451,75 +476,94 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
 
     def Async(self):
         #-----IF TEST MODE FUNCTION--START---
-        if not self.mode and self.timer<=1:#timer<=3で時間差を作っている
-            self.timer+=self.sleepTime
+        if self.ACUmonitor.frontend_rooped:
+            if not self.mode and self.timer<=1:#timer<=3で時間差を作っている
+                self.timer+=self.sleepTime
 
-        if not self.mode and self.timer>=1 and not self.funcok:
-            self.setDeviceConected()
-            self.sleep()
-            self.sleep()
-            self.sleep()
-            self.sleep()
-            self.setText2CommandLine(text="TryConect")
-            
-            self.setSuccces2Conect()
-            self.Succces2ConectFunc()
-            self.serialInputter.isSerialSet=True
-            self.funcok=True
-        
-        if self.funcok:
-            self.SerialFunc()
-        #-----IF TEST MODE FUNCTION--END-----
-        if not self.getDeviceConectStats() and self.mode:
-            ports=list_ports.comports()
-            device=[info for info in ports if self.deviceName in info.description] #.descriptionでデバイスの名前を取得出来る
-            if not len(device) == 0:
-                self.Port=device[0].device
+            if not self.mode and self.timer>=1 and not self.funcok:
                 self.setDeviceConected()
-            else:
-                if self.isDeviceConected:
-                    self.setDeviceDisconected()
-                else:
-                    self.isDeviceConected=False
-                    self.isSucccesConect=False
-        if self.isDeviceConected and not self.getConectStats() and self.mode:
-            try:
-                if isinstance(self.Serial,serial.Serial):
-                    self.Serial.close()
-                    self.Serial=None
+                self.sleep()
+                self.sleep()
+                self.sleep()
+                self.sleep()
                 self.setText2CommandLine(text="TryConect")
-                self.Serial=serial.Serial(self.Port, self.Baudrate,timeout=0.1)
-
-
-            except (OSError, serial.SerialException):#切断されたときに呼ばれる
-                self.setFaild2Conect()
-            except:
-                if isinstance(self.Serial,serial.Serial):
-                    self.setText2CommandLine(text="ProgExept!")
-                pass
-            else:
+                
                 self.setSuccces2Conect()
                 self.Succces2ConectFunc()
                 self.serialInputter.isSerialSet=True
-                self.serialInputter.Myserial=self.Serial
-        if self.getConectStats() and self.mode:
-            try:
-                self.SerialFunc()
-            except (OSError, serial.SerialException):#切断されたときに呼ばれる
-                self.setDeviceDisconected()
-                self.disConectFunc()
-            except:
-                if isinstance(self.Serial,serial.Serial):
-                    self.setText2CommandLine(text="SerialWorong!")
+                self.funcok=True
+            
+            if self.funcok:
+                if self.Type==1:
+                    self.SerialFunc()
+                elif self.Type==2:
+                    self.SerialFunc2()
+            #-----IF TEST MODE FUNCTION--END-----
+            if not self.getDeviceConectStats() and self.mode:
+                ports=list_ports.comports()
+                device=[info for info in ports if self.deviceName in info.description] #.descriptionでデバイスの名前を取得出来る
+                if not len(device) == 0:
+                    self.Port=device[0].device
+                    self.setDeviceConected()
                 else:
-                    self.setText2CommandLine(text="ProgExept!")
-                pass
-        self.sleep()
+                    if self.isDeviceConected:
+                        self.setDeviceDisconected()
+                    else:
+                        self.isDeviceConected=False
+                        self.isSucccesConect=False
+            if self.isDeviceConected and not self.getConectStats() and self.mode:
+                try:
+                    if isinstance(self.Serial,serial.Serial):
+                        self.Serial.close()
+                        self.Serial=None
+                    self.setText2CommandLine(text="TryConect")
+                    self.Serial=serial.Serial(self.Port, self.Baudrate,timeout=0.1)
 
+
+                except (OSError, serial.SerialException):#切断されたときに呼ばれる
+                    self.setFaild2Conect()
+                except:
+                    if isinstance(self.Serial,serial.Serial):
+                        self.setText2CommandLine(text="ProgExept!")
+                    pass
+                else:
+                    self.setSuccces2Conect()
+                    self.Succces2ConectFunc()
+                    self.serialInputter.isSerialSet=True
+                    self.serialInputter.Myserial=self.Serial
+            if self.getConectStats() and self.mode:
+                try:
+                    if self.Type==1:
+                        self.SerialFunc()
+                    elif self.Type==2:
+                        self.SerialFunc2()
+                except (OSError, serial.SerialException):#切断されたときに呼ばれる
+                    self.setDeviceDisconected()
+                    self.disConectFunc()
+                except:
+                    if isinstance(self.Serial,serial.Serial):
+                        self.setText2CommandLine(text="SerialWorong!")
+                    else:
+                        self.setText2CommandLine(text="ProgExept!")
+                    pass
+            #self.sleep()
+        else:
+            print("まだその時ではない。。。。")
+            
     def SerialFunc(self):
         pass
     
-    def __init__(self,testMode=False,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None):
+    def SerialFunc2(self):
+        pass
+    
+    def executeCommand(self):
+        pass
+    
+    def readCommand(self):
+        pass
+    
+    def __init__(self,testMode=False,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None,Type=1):
+        self.Type=Type
         self.deviceName=deviceName
         self.deviceType=deviceType
         self.sleepTime=sleepT
@@ -530,865 +574,54 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
         self.mode=not testMode
         super().__init__(acu)
 
-class AnntenaMovement(AsyncedClass):
+class InputRoopClass(AsyncedClass):
+
+    data=None
+
+    isSerialSet=False
+
+    Myserial=None
     
-    kp = 1.5  # 任意の値、調整が必要
-    ki = 0.001  # 任意の値、調整が必要
-    kd = 0.01  # 任意の値、調整が必要
-    prev_Azerror = 0
-    Azintegral = 0
-    prev_Elerror = 0
-    Elintegral = 0
-
-    def Async(self):
-        if isinstance(self.Agent,AnntenaAgent):
-            if self.Agent.On:#getAzStats,posMode,rate
-                Azstats=self.Agent.getAzStats()
-                Elstats=self.Agent.getElStats()
-                #print("アンテナ代理",Azstats)
-                if Azstats[2]=="posMode" or Azstats[2]=="rate":
-                    self.AzPID()
-                if Elstats[2]=="posMode" or Elstats[2]=="rate":
-                    self.ElPID()
-        self.sleep()
-        
-    def AzPID(self):
-        dt = self.sleepTime
-        currentangle=self.convertHex2AzPos(self.Agent.AzRealRad)
-        target_angle=self.convertHex2AzPos(self.Agent.AzRad)
-        if abs(self.relative_angle(first_angle=currentangle, second_angle=target_angle))>0.01:
-            angular_velocity = self.calculate(setpoint=target_angle, current_value=currentangle, dt=dt,axis=1)
-
-            # 角速度が制限範囲内に収める 
-            angular_velocity = max(-45, min(45, angular_velocity))
-
-            #print("BEFORE ADD ANGLE=",currentangle,"velo=",(angular_velocity * dt),"Tgt=",target_angle)
-            currentangle=self.add_angle(original_angle=currentangle,add_angle=(angular_velocity * dt))
-            #print("AFTER ADD ANGLE=",currentangle)
-            self.Agent.AzRealRad=self.convertDeg2Hex(currentangle)
-            #print(f"Current Angle: {currentangle}",f"Current Velocity:{angular_velocity}")
-            #Diff=self.relative_angle(first_angle=current_angle, second_angle=target_angle)
-            
-    def ElPID(self):
-        dt = self.sleepTime
-        currentangle=self.convertHex2ElPos(self.Agent.ElRealRad)
-        target_angle=self.convertHex2ElPos(self.Agent.ElRad)
-        if abs(self.relative_angle(first_angle=currentangle, second_angle=target_angle))>0.01:
-            angular_velocity = self.calculate(setpoint=target_angle, current_value=currentangle, dt=dt,axis=2)
-
-            # 角速度が制限範囲内に収める
-            angular_velocity = max(-45, min(45, angular_velocity))
-
-            currentangle=self.add_angle(original_angle=currentangle,add_angle=(angular_velocity * dt))
-                        
-            self.Agent.ElRealRad=self.convertDeg2Hex(currentangle)
-            #print(f"Current Angle: {currentangle}",f"Current Velocity:{angular_velocity}")
-            #Diff=self.relative_angle(first_angle=current_angle, second_angle=target_angle)
-     
-    def convertDeg2Hex(self,angle):
-        '''
-        this is used to angle to sbca hex
-        '''
-        fixint=int(angle/0.005493164)
-        hexvalue=hex(fixint)
+    Mode="REAL" #or TEST
+    
+    Type=2
+    
+    def setserial(self,ser):
+        self.Myserial=ser
+    
+    def getdata(self):
         re=""
-        for i in range(2,len(hexvalue)):
-            re+=str(hexvalue[i])
+        if self.Type==1:
+            re=self.data
+            self.data=""
+        elif self.isSerialSet and isinstance(self.Myserial,AnntenaController):
+            self.data = self.Myserial.readline().decode('ascii')  
+            re=self.data
+            self.data=""
         return re
+    
+    def Async(self):
+        start = time.time()  # 現在時刻（処理開始前）を取得
 
-    def convertHex2Deg(self,sbca_value, bit_count=16, resolution=360.0,mode=1):
-        """
-        Convert SBCA formatted value to angle.
-        """
-        hex_number = sbca_value  # 16進数として扱う文字列
-        decimal_value = int(hex_number, 16)
-        binary_number = bin(int(hex_number, 16))[2:].zfill(len(hex_number) * 4)  # 16進数を10進数に変換し、その後2進数に変換して0埋め
-        if binary_number[0]=="1" and mode==2:
-            decimal_value=(1 << (len(hex_number) * 4)) - decimal_value
-            decimal_value*=-1
-        normalized_value = decimal_value / 65535  # Normalize to [0, 1]
-        angle = normalized_value * resolution
-        return angle
-
-    def convertHex2AzPos(self,sbca_value):
-        return self.convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
-
-    def convertHex2ElPos(self,sbca_value):
-        return self.convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
-
-    def convertHex2Rate(self,sbca_value):
-        return self.convertHex2Deg(sbca_value=sbca_value,resolution=90.0,mode=2)
-
-    def calculate(self, setpoint, current_value, dt,axis=1):#axis 1=az,2=el
-        error = self.relative_angle(current_value,setpoint)
-        if axis==1:
-            self.Azintegral += error * dt
-            derivative = (error - self.prev_Azerror) / dt
-            output = self.kp * error + self.ki * self.Azintegral + self.kd * derivative
-            self.prev_Azerror = error
+        if self.isSerialSet and isinstance(self.Myserial,serial.Serial):
+            self.data = self.Myserial.readline().decode('ascii')  
+            pass
+        elif self.isSerialSet and isinstance(self.Myserial,AnntenaController) and self.Type==1:
+            self.data = self.Myserial.readline().decode('ascii')  
+            #print("isinstance(self.Myserial,AnntenaController)")
         else:
-            self.Elintegral += error * dt
-            derivative = (error - self.prev_Elerror) / dt
-            output = self.kp * error + self.ki * self.Elintegral + self.kd * derivative
-            self.prev_Elerror = error
-        return output
-    
-    def relative_angle(self,first_angle, second_angle):
-        # 角度が範囲外の場合、正規化する
-        first_angle = first_angle % 360
-        second_angle = second_angle % 360
+            #print("成功!")
+            pass
+        self.sleep()
+        end = time.time()  # 現在時刻（処理完了後）を取得
+        time_diff = end - start  # 処理完了後の時刻から処理開始前の時刻を減算する
+        print("[InputRoopClass]DIFF=",time_diff)  # 処理にかかった時間データを使用
 
-        # 0°から見たときの相対角度を計算
-        relative_angle = second_angle - first_angle
-
-        # 結果が180°より大きい場合、-180°から180°の範囲に収める
-        if relative_angle > 180:
-            relative_angle -= 360
-        elif relative_angle < -180:
-            relative_angle += 360
-
-        return relative_angle
-    
-    def add_angle(self,original_angle,add_angle):
-        original_angle = original_angle % 360
-        add_angle = add_angle % 360
-        
-        angle=original_angle+add_angle
-        angle%=360
-        
-        if angle<0:
-            angle+=360
-            
-        return angle
-    
     def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
         self.sleepTime=sleepT
         self.message=message
         self.master=ma
-        self.ts=load.timescale(builtin=True)
         super().__init__(acu)
-   
-    def setAgent(self,Agentclass):
-        self.Agent=Agentclass
-
-class AnntenaAgent():
-    '''
-    アンテナを模倣したクラス]
-    text.split(split_word)
-    text.replace(delstr, '')
-    time.sleep(float(self.sleepTime))
-    '''
-    
-    bit_contents={"0-1-2":{"0":"stby","1":"rate","2":"SynSlave","3":"posMode"},"3":{"0":"Ifil","1":"Ⅱfil"}}
-    Error="@8"
-    IsInitialServo=False
-    IsInitialACU=False
-    
-    Result="ssss"
-    
-    On=False
-    Off=True
-    
-    AzStats="1000"
-    ElStats="1000"
-    
-    AzRad="0000"
-    ElRad="0000"
-    
-    AzRealRad="0000"
-    ElRealRad="0000"
-    
-    AzRate="0000"
-    ElRate="0000"
-    
-    AzFistPos=0
-    ElFirstPos=0
-    
-    def getResult(self):
-        re=""
-        if isinstance(self.Result,bytes):
-            re.encode('ascii')
-            re=self.Result
-        else:
-            re=""
-            re=re.encode('ascii')
-
-
-
-        return re
-    
-    def __init__(self,Anntena):
-        if isinstance(Anntena,AnntenaMovement):
-            Anntena.setAgent(self)
-    
-    def getAzStats(self):
-        text_len=len(self.AzStats)
-        print("getAzStats",self.AzStats)
-        re=[]
-        for i in range(1,text_len):
-            if i==1:
-                re.append(self.bit_contents["0-1-2"][self.AzStats[i]])
-            if i==2:
-                re.append(self.bit_contents["0-1-2"][self.AzStats[i]])
-            if i==3:
-                re.append(self.bit_contents["0-1-2"][self.AzStats[i]])
-        return re
-    
-    def getElStats(self):
-        text_len=len(self.ElStats)
-        print("getElStats",self.ElStats)
-        re=[]
-        for i in range(1,text_len):
-            if i==1:
-                re.append(self.bit_contents["0-1-2"][self.ElStats[i]])
-            if i==2:
-                re.append(self.bit_contents["0-1-2"][self.ElStats[i]])
-            if i==3:
-                re.append(self.bit_contents["0-1-2"][self.ElStats[i]])
-        return re
-            
-    def SetInitialmode(self,text):
-        if text[0] is "@" and text[1] is "8":
-            self.IsInitialServo=True
-            self.IsInitialACU=False
-        elif text[0] is "@" and text[1] is "0":
-            self.IsInitialACU=True
-            self.IsInitialServo=False
-        else:
-            self.IsInitialServo=False
-            self.IsInitialACU=False
-
-    def deleateInitial(self,text,initial):
-        return text.replace(initial,'')
-
-    def splitSpace(self,text):
-        return text.split(" ")
-    
-    def splitText(self,text,sp):
-        re=[text]
-        if text.find(sp)>=0:
-            re=text.split(sp)
-        return re
-        
-    def setMessage(self,message):
-        re="@?"
-        print("[",type(self),"]data:",message.decode('ascii'))
-        if isinstance(message,bytes):
-            normMessage=message.decode('ascii') #or ascii
-            self.SetInitialmode(normMessage)
-            if self.IsInitialACU:
-                initialdeleate=self.deleateInitial(text=normMessage,initial="@0")
-                split=self.splitSpace(initialdeleate)
-                split[len(split)-1]=self.deleateInitial(text=split[len(split)-1],initial="\r\n")
-                if split[0] is "LBL":
-                    if split[1] is "R1":
-                        re="@0AZIMUTH"
-                    if split[1] is "R2":
-                        re="@0AZIMUTH,ELEVATION"
-                    if split[1] is "R3":
-                        re="@0AZIMUTH,ELEVATION,TILT"
-                if split[0] is "STA":
-                    if split[1] is "R40":
-                        re="@0"
-            elif self.IsInitialServo:
-                initialdeleate=self.deleateInitial(text=normMessage,initial="@8")
-                split=self.splitSpace(initialdeleate)
-                split[len(split)-1]=self.deleateInitial(text=split[len(split)-1],initial="\r\n")
-                
-                if split[0]=="DO":
-                    if split[1]=="W0300":
-                        re="@8"
-                        self.On=True
-                        self.Off=False
-                    if split[1]=="W0200":
-                        re="@8"
-                        self.On=False
-                        self.Off=True
-                    if split[1]=="R2":
-                        if self.On:
-                            re="@80300,0000"
-                            
-                        elif self.Off:
-                            re="@80200,0000"
-                elif split[0] == "MOD" and self.On:
-                    if split[1] == "R1":
-                        re="@8"+self.AzStats
-                    if split[1] == "R2":
-                        re="@8"+self.AzStats+","+self.ElStats
-                    elif split[1].find("W")>=0:
-                        initialdeleate=self.deleateInitial(text=split[1],initial="W")
-                        split2=self.splitText(text=initialdeleate,sp=",")
-                        split2[len(split2)-1]=self.deleateInitial(text=split2[len(split2)-1],initial="\r\n")
-                        
-                        for i in range(0,len(split2)):
-                            if i==0:
-                                self.AzStats=split2[0]
-                            if i==1:
-                                self.ElStats=split2[1]
-                        
-                        re="@8"
-                elif split[0] == "POS"and self.On:
-                    print("split2=",split)
-                    if split[1] == "R1":
-                        re="@8"+self.AzRealRad
-                    elif split[1] == "R2":
-                        re="@8"+self.AzRealRad+","+self.ElRealRad
-                    elif split[1].find("W")>=0:
-                        initialdeleate=self.deleateInitial(text=split[1],initial="W")
-                        split2=self.splitText(text=initialdeleate,sp=",")
-                        split2[len(split)-1]=self.deleateInitial(text=split2[len(split2)-1],initial="\r\n")
-                        for i in range(0,len(split2)):
-                            if i==0:
-                                self.AzRad=split2[0]
-                            if i==1:
-                                self.ElRad=split2[1]
-                        re="@8"
-                elif split[0] == "RTE"and self.On:
-                    if split[1] == "R1":
-                        re="@8"+self.AzRate
-                    elif split[1] == "R2":
-                        re="@8"+self.AzRate+","+self.ElRate
-                    elif split[1].find("W")>=0:
-                        initialdeleate=self.deleateInitial(text=split[1],initial="W")
-                        split2=self.splitText(text=initialdeleate,sp=",")
-                        split2[len(split)-1]=self.deleateInitial(text=split2[len(split2)-1],initial="\r\n")
-                        for i in range(0,len(split2)):
-                            if i==0:
-                                self.AzRad=split2[0]
-                            if i==1:
-                                self.ElRad=split2[1]
-                        re="@8"
-        print("[",type(self),"]RE:",re)
-        T=len(re)*0.001
-        if re=="@?":
-            T=0.1
-        print("ACUWRITE=",T)
-        #time.sleep(T)
-        self.Result=re.encode('ascii')
-    
-class ComClassBase():
-    __serialCodes={'cr':"\r",'lf':"\n",'ack':'<<0x06>>','Space':'<<x20>>','cr(acu)':'<<x0d>>','ignoreM':'@?'}
-    
-    __isMessageSended=False
-    
-    __isMustCheckMessage=False
-    
-    __isMessageReceived=False
-    
-    __mySendedMessage="none"
-    
-    __recivedMessageContents=None
-    
-    __messageIgnoreTimes=3#何回応答メッセージが届かなかったら次の処理に移るかの目安
-    
-    __ignoretime=0
-    
-    __serialclass=None
-    
-    __executeStop=False
-    
-    __StopbyError=False
-
-    def convertDeg2Hex(self,angle):
-        '''
-        this is used to angle to sbca hex
-        '''
-        fixint=int(angle/0.005493164)
-        return hex(fixint)
-    
-    def normNum(self,num,ren=2,value="9",normround=5):
-        find=num.find(".")
-        lengh=len(num)
-        okFlag=0
-        re=float(num)
-        if find!=-1:
-            for i in range(find+1,lengh-1):
-                if num[i] is value:
-                    okFlag+=1
-                else:
-                    break
-        if okFlag>=ren:
-            re=round(re)
-        else:
-            re=round(re,normround)
-        return re
-    
-    def convertHex2Deg(self,sbca_value="0000", bit_count=16, resolution=90.0,mode=1):
-        """
-        Convert SBCA formatted value to angle.
-        """
-        hex_number = sbca_value  # 16進数として扱う文字列
-        decimal_value = int(hex_number, 16)
-        binary_number = bin(int(hex_number, 16))[2:].zfill(len(hex_number) * 4)  # 16進数を10進数に変換し、その後2進数に変換して0埋め
-        if binary_number[0]=="1" and mode==2:
-            decimal_value=(1 << (len(hex_number) * 4)) - decimal_value
-            decimal_value*=-1
-        normalized_value = decimal_value / 65535  # Normalize to [0, 1]
-        angle = normalized_value * resolution
-        return angle
-    
-    def convertHex2AzPos(self,sbca_value):
-        return self.convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
-
-    def convertHex2ElPos(self,sbca_value):
-        return self.convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
-
-    def convertHex2Pos(self,sbca_value):
-        return self.convertHex2Deg(sbca_value=sbca_value,resolution=90.0,mode=2)
-
-    
-    def executeCommand(self,command,isMustCheckMessage,ignoreTimes,getdata):
-        if self.__executeStop:
-            return
-        
-        self.__messageIgnoreTimes=ignoreTimes
-        self.__isMustCheckMessage=isMustCheckMessage
-        
-        if self.__ignoretime>=self.__messageIgnoreTimes or self.__isMessageReceived:
-            if self.__ignoretime>=self.__messageIgnoreTimes:
-                self.__StopbyError=True
-            self.setStopExecute()
-            
-        if self.__ignoretime>0:
-            command=self.__mySendedMessage
-
-        if self.__isMessageSended:#PCから送信済み
-            if self.__isMustCheckMessage:
-                if self.isIgnorePattern(getdata):#データが不十分過ぎたら
-                    self.__ignoretime+=1
-                    self.__isMessageSended=False
-                    print("データが不十分です"+getdata,type(self))
-                else:
-                    self.checkMessage(getdata)#応答メッセージをチェックし、異常が無ければ
-                pass
-            else:
-                self.__isMessageSended=False
-                self.setStopExecute()
-        else:
-            print("WRITED",type(self),command)
-            self.__serialWrite(command)
-            self.__isMessageSended=True
-            self.__mySendedMessage=command
-
-    def setIsMessageReceived(self):
-        self.__isMessageReceived=True
-
-    def getIgnoretime(self):
-        return self.__ignoretime
-    
-    def setMessageContents(self,text):
-        self.__recivedMessageContents=text
-        self.__isMessageReceived=True
-        self.setStopExecute()
-
-    def getTextDeleateStr(self,text,delstr):
-        return text.replace(delstr, '')
-    
-    def getSplitText(self,text,split_word=','):
-        return text.split(split_word)
-
-    def getStopstats(self):
-        return {"isStop":self.__executeStop,"byError":self.__StopbyError}
-    
-    def getContents(self):
-        return self.__recivedMessageContents
-
-    def getReceivedMessageContents(self):
-        pass
-            
-    def checkMessage(self,message):#以上が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
-        pass
-    
-    def setStopExecute(self):
-        self.__executeStop=True
-        self.__ignoretime=0
-        self.__mySendedMessage="none"
-        self.__isMessageSended=False
-        self.__isMustCheckMessage=False
-        self.__isMessageReceived=False
-        print("[",type(self),"]:終了します","Error",self.__StopbyError)
-   
-    def setEnableExecute(self):
-        self.__executeStop=False
-        self.__StopbyError=False
-        self.__recivedMessageContents=None
-        
-    def reset(self):
-        self.__executeStop=False
-        self.__StopbyError=False
-        self.__recivedMessageContents=None
-        self.__ignoretime=0
-        self.__mySendedMessage="none"
-        self.__isMessageSended=False
-        self.__isMustCheckMessage=False
-        self.__isMessageReceived=False
-        print("[",type(self),"]:リセットします")
-
-
-        
-    def __normalizeCode(self,code):
-        return code
-    
-    def getSendedMessage(self):
-        return self.__mySendedMessage
-    
-    def isIgnorePattern(self,message):#子クラスでオーバーライド
-        pass
-    
-    def getnormSerialCode(self,serialcode="none"):
-        normCode=self.__normalizeCode(serialcode)
-        return self.__serialCodes[normCode]
-    
-    def __serialWrite(self,code="@0BAU W9600"):
-        if  isinstance(self.__serialclass,Serialcommunicator4GeneralUse):
-            code+=(self.__serialCodes['cr']+self.__serialCodes['lf'])
-            self.__serialclass.SerialWrite(code)
-
-    def __init__(self,serialclass=None):
-        self.__serialclass=serialclass
-        print("初期化完了")
-
-class powerOnOffCom(ComClassBase):
-    def __init__(self,serialclass=None):
-        super().__init__(serialclass=serialclass)
-
-    def isIgnorePattern(self,message):#子クラスでオーバーライド
-        super(powerOnOffCom,self).isIgnorePattern(message)
-        ig=message.find(self.getnormSerialCode('ignoreM'))
-        ig=(ig>=0)
-        nothing=message is ""
-        return (ig or nothing)
-    
-    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
-        super(powerOnOffCom,self).checkMessage(message)
-        In8=message.find("@8")
-        if In8>=0:
-            if self.getSendedMessage().find("0300")>=0:
-                self.setMessageContents(True)
-            if self.getSendedMessage().find("0200")>=0:
-                self.setMessageContents(False)
-
-    def getReceivedMessageContents(self):
-        super(powerOnOffCom,self).getReceivedMessageContents()
-        return self.getContents()
-
-class checkoutputCom(ComClassBase):
-    def __init__(self,serialclass=None):
-        super().__init__(serialclass=serialclass)
-
-    def isIgnorePattern(self,message):#子クラスでオーバーライド
-        super(checkoutputCom,self).isIgnorePattern(message)
-        ig=message.find(self.getnormSerialCode('ignoreM'))
-        ig=(ig>=0)
-        nothing=message is ""
-        return (ig or nothing)
-    
-    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
-        super(checkoutputCom,self).checkMessage(message)
-        InRpos=self.getSendedMessage().find("R")
-        isInR=InRpos>=0
-        if isInR:
-            deleateInitial=self.getTextDeleateStr(text=message,delstr='@8')
-            howmany=int(self.getSendedMessage()[InRpos+1])
-            AzEl=self.getSplitText(text=deleateInitial)
-            if howmany==2:
-                if AzEl[0]=="0300":
-                    self.setMessageContents(True)
-                elif AzEl[0]=="0200":
-                    self.setMessageContents(False)
-
-    def getReceivedMessageContents(self):
-        super(checkoutputCom,self).getReceivedMessageContents()
-        return self.getContents()
-        
-class AxisModeCom(ComClassBase):
-    
-    bit_contents={"0-1-2":{"0":"stby","1":"rate","2":"SynSlave","3":"posMode"},"3":{"0":"Ifil","1":"Ⅱfil"}}
-    
-    def __init__(self,serialclass=None):
-        super().__init__(serialclass=serialclass)
-        
-    def isIgnorePattern(self,message):#子クラスでオーバーライド
-        super(AxisModeCom,self).isIgnorePattern(message)
-        ig=message.find(self.getnormSerialCode('ignoreM'))
-        ig=(ig>=0)
-        nothing=message is ""
-        return (ig or nothing)
-    
-    def getMessageContents(self,text):
-        text_len=len(text)
-        re=[]
-        for i in range(1,text_len):
-            if i==1:
-                re.append(self.bit_contents["0-1-2"][text[i]])
-            if i==2:
-                re.append(self.bit_contents["0-1-2"][text[i]])
-            if i==3:
-                re.append(self.bit_contents["0-1-2"][text[i]])
-        return re
-            
-    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
-        super(AxisModeCom,self).checkMessage(message)
-        InRpos=self.getSendedMessage().find("R")
-        isInR=InRpos is not -1
-        InWpos=self.getSendedMessage().find("W")
-        isInW=InWpos is not -1
-        if isInR:
-            deleateInitial=self.getTextDeleateStr(text=message,delstr='@8')
-            howmany=int(self.getSendedMessage()[InRpos+1])
-            if howmany==1:
-                az=self.getMessageContents(deleateInitial)
-                self.setMessageContents({"Az":az[2]})
-            elif howmany==2:
-                AzEl=self.getSplitText(text=deleateInitial)
-                
-                az=self.getMessageContents(AzEl[0])
-                el=self.getMessageContents(AzEl[1])
-                self.setMessageContents({"Az":az[2],"El":el[2]})
-        if isInW:
-            print("self.getSendedMessage=",self.getSendedMessage())
-            deleateInitial=self.getTextDeleateStr(text=self.getSendedMessage(),delstr='@8MOD W')
-            howmany=int(deleateInitial.count(",")+1)
-            if howmany==1:
-                az=self.getMessageContents(deleateInitial)
-                self.setMessageContents({"Az":az[2]})
-            elif howmany==2:
-                AzEl=self.getSplitText(text=deleateInitial)
-                az=self.getMessageContents(AzEl[0])
-                el=self.getMessageContents(AzEl[1])
-                self.setMessageContents({"Az":az[2],"El":el[2]})
-             
-    def getReceivedMessageContents(self):
-        super(AxisModeCom,self).getReceivedMessageContents()
-        return self.getContents()
-
-class PositionCom(ComClassBase):
-     
-    def __init__(self,serialclass=None):
-        super().__init__(serialclass=serialclass)
-
-    def isIgnorePattern(self,message):#子クラスでオーバーライド
-        super(PositionCom,self).isIgnorePattern(message)
-        ig=message.find(self.getnormSerialCode('ignoreM'))
-        ig=(ig>=0)
-        nothing=message is ""
-        return (ig or nothing)
-    
-    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
-        super(PositionCom,self).checkMessage(message)
-        InRpos=self.getSendedMessage().find("R")
-        isInR=InRpos is not -1
-        InWpos=self.getSendedMessage().find("W")
-        isInW=InWpos is not -1
-
-        if isInR:
-            deleateInitial=self.getTextDeleateStr(text=message,delstr='@8')
-            howmany=int(self.getSendedMessage()[InRpos+1])
-            if howmany==1:
-                self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=deleateInitial,resolution=360)})
-            elif howmany==2:
-                AzEl=self.getSplitText(text=deleateInitial)
-                print("AZ",AzEl[0])
-                print(type(AzEl[0]))
-                self.setMessageContents({"Az":self.convertHex2AzPos(sbca_value=AzEl[0]),"El":self.convertHex2ElPos(sbca_value=AzEl[1])})
-        if isInW:
-            deleateInitial=self.getTextDeleateStr(text=self.getSendedMessage(),delstr='@8POS W')
-            print("now ignore=",self.getIgnoretime())
-            howmany=int(deleateInitial.count(",")+1)
-            if howmany==1:
-                self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=deleateInitial,resolution=360)})
-            elif howmany==2:
-                AzEl=self.getSplitText(text=deleateInitial)
-                self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=AzEl[0],resolution=360),"El":self.convertHex2Deg(sbca_value=AzEl[1],resolution=360)})
-
-    def getReceivedMessageContents(self):
-        super(PositionCom,self).getReceivedMessageContents()
-        return self.getContents()
-        
-
-class ObserbDiffClass():
-    
-    __nowstats=None
-    
-    __beforestats=None
-    
-    __statsType=1
-    
-    __ischange=False
-    
-    
-    '''
-    __statsType
-    1=数字
-    2=CommandMode
-    '''
-    
-    def setNowstats(self,stats):
-        self.__nowstats=stats
-        self.setStats()
-        
-    def setbeforestats(self,stats):
-        self.__beforestats=stats
-        
-    def __init__(self,statsType):
-        self.__statsType=statsType
-        if statsType==1:
-            self.__beforestats=0
-            self.__nowstats=0
-            
-    def isValue(self,n):
-        re=False
-        if isinstance(n, int):
-            re=True
-        if isinstance(n, float):
-            re=True
-        return re
-        
-    def setStats(self):#どちらかがNoneでも実行する場合もある
-        re=False
-        if self.__statsType==1 and self.isValue(self.__nowstats) and self.isValue(self.__beforestats):
-            if self.__nowstats is not self.__beforestats:
-                re=True
-        if self.__statsType==2:
-            if self.__nowstats is not self.__beforestats:
-                re=True
-        self.__ischange=re
-        
-    def getchangeStats(self):
-        return self.__ischange
-    
-    def getNowstats(self):
-        return self.__nowstats
-    
-    def getBfrstats(self):
-        return self.__beforestats
-    
-    def chancellnow(self):
-        self.__nowstats=self.__beforestats
-        
-class RotManager(ObserbDiffClass):
-    
-    bfr_time=None
-    
-    speed=0
-    
-    def __init__(self):
-        super().__init__(statsType=1)
-        self.setNowstats(stats=None)
-        self.setbeforestats(stats=None)
-        
-    def reset(self):
-        self.bfr_time=None
-        self.update_interval=None
-        self.setNowstats(stats=None)
-        self.setbeforestats(stats=None)
-        self.speed=0
-
-    def updateRot(self,rot):
-        self.setbeforestats(self.getNowstats())
-        self.setNowstats(rot)
-        if self.bfr_time is None:
-            self.bfr_time=time.time()
-        if self.getchangeStats():
-            end = time.time()  # 現在時刻（処理完了後）を取得
-            interval = end - self.bfr_time  # 処理完了後の時刻から処理開始前の時刻を減算する
-            self.speed=self.relative_angle(first_angle=self.getBfrstats(), second_angle=self.getNowstats())/interval
-            
-
-    def relative_angle(self,first_angle, second_angle):
-        # 角度が範囲外の場合、正規化する
-        first_angle = first_angle % 360
-        second_angle = second_angle % 360
-
-        # 0°から見たときの相対角度を計算
-        relative_angle = second_angle - first_angle
-
-        # 結果が180°より大きい場合、-180°から180°の範囲に収める
-        if relative_angle > 180:
-            relative_angle -= 360
-        elif relative_angle < -180:
-            relative_angle += 360
-
-        return relative_angle
-
-class AxisStatsManager():
-    
-    __nowProgRot=None
-    
-    __nowRealRot=0
-    
-    __axisStats=None
-    
-    __statsCommand="0001"#prog
-    
-    __NowAxisMode=None
-    
-    __BfrAxisMode=None
-        
-    __rotation_manager=None
-    
-    name="AZ"
-    
-    def setRealRot(self,rot):
-        self.__nowRealRot=rot
-        self.__rotation_manager.updateRot(rot=rot)
-        
-    def getRealRot(self):
-        return self.__nowRealRot
-    
-    def getProgRot(self):
-        return self.__nowProgRot
-
-        
-    def setProgRot(self,rot):
-        self.__nowProgRot=rot
-
-    
-    def getRotSpeed(self):
-        return self.__rotation_manager.speed
-    
-    def __init__(self,name=""):
-        self.__rotation_manager=RotManager()
-        self.name=name
-        
-        
-    def reset(self):
-        self.__nowProgRot=None
-        self.__nowRealRot=0
-        self.__axisStats=None
-        self.__statsCommand="0001"
-        self.__rotation_manager.reset()
-        self.__NowAxisMode=None
-        self.__BfrAxisMode=None
-        
-    def setStatsCom(self,com):
-        self.__statsCommand=com
-        
-        
-    def getStatsCom(self):
-        return self.__statsCommand
-    
-
-    def updateStats(self,axisStats):
-        if isinstance(axisStats,AxisMode):
-            #print("STATS_THE=",axisStats,self.name)
-            self.__BfrAxisMode=self.__NowAxisMode
-            self.__NowAxisMode=axisStats
-            
-    def getStats(self):
-        return {"nowAxismode":self.__NowAxisMode,"bfrAxismode":self.__BfrAxisMode}
-    
-    def isstby2notstby(self):
-        return self.__BfrAxisMode is AxisMode.Stby and self.__NowAxisMode is AxisMode.Stby
-
-    def isstats2stby(self):
-        return self.__BfrAxisMode is not AxisMode.Stby and self.__NowAxisMode is AxisMode.Stby
-    
-    def isstats2manustop(self):
-        return self.__BfrAxisMode is not AxisMode.ManuStop and self.__NowAxisMode is AxisMode.ManuStop
-
-    def isstats2manuset(self):
-        return self.__BfrAxisMode is not AxisMode.ManuSet and self.__NowAxisMode is AxisMode.ManuSet
 
 class AnntenaController(Serialcommunicator4GeneralUse):
         
@@ -1692,11 +925,11 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                     self.flag=False
                     end = time.time()  # 現在時刻（処理完了後）を取得
                     time_diff = end - self.start  # 処理完了後の時刻から処理開始前の時刻を減算する
-                    print("DIFF=",time_diff)  # 処理にかかった時間データを使用
+                    print("[UpdateAxis]DIFF=",time_diff)  # 処理にかかった時間データを使用
                 else:
                     self.flag=True
                     self.start = time.time()  # 現在時刻（処理開始前）を取得
-                    print("DIFF_START!")
+                    print("[UpdateAxis]DIFF_START")
 
                 self.AxisComStats=CommandMode.ReadAxis
         return self.AxisComStats
@@ -1759,10 +992,65 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     SUM=0
     time_diff=0
     start=0
+    start1=0
+    start2=0
 
     flag=False
+    flag1=False
+    flag2=False
+    
+    def SerialFunc2(self):
+        #self.serialInputter.setserial(self)
+        self.setUpAntenna()
+        if self.setUped:
+            if self.READED:
+                self.monitorAzmode()
+                self.monitorElmode()
+                if self.AzorEl2AxisModeChange():#AzかElの状態が変わったことを示す
+                    if self.ischangeAz2Stby():
+                        self.setAz2StbyCom()
+                    if self.ischangeEl2Stby():
+                        self.setEl2StbyCom()
+                    if self.ischangeAz2notStby():
+                        self.setAz2ManuCom()
+                    if self.ischangeEl2notStby():
+                        self.setEl2ManuCom()
+                else:#AzとELはそのまま
+                    do=self.getwhatdoAxisCom()
+                    if do is CommandMode.ReadAxis:
+                        self.executeAxisRead()
+                    elif do is CommandMode.ReadAxisMode:
+                        self.executeCommand(kind=CommandMode.ReadAxisMode,comvalue="@8MOD R2")
+                    elif self.CONTROL_MODE is ACUControlMode.Slave:
+                        planet_coords=self.ACUmonitor.FrontEnd.getPlanetCoords()
+                        Az,El=self.getAzELrot(planet_coords)
+                        azrot=self.AzStatsManager.getRealRot()
+                        elrot=self.ElStatsManager.getRealRot()
+                        
+                        if Az is None and self.AZ_MODE is not AxisMode.Prog:
+                            if self.AZ_MODE is AxisMode.ManuSet:
+                                Az=self.getAzmanualRot()
+                                if Az<0:
+                                    Az%=360
+                                    Az+360
+                            if self.BFR_AZ_MODE is AxisMode.ManuSet and self.AZ_MODE is AxisMode.ManuStop or (self.BFR_AZ_MODE is AxisMode.Prog and self.AZ_MODE is AxisMode.Manu):
+                                Az=azrot
+                        
+                        if El is None and self.EL_MODE is not AxisMode.Prog:
+                            if self.EL_MODE is AxisMode.ManuSet:
+                                El=self.getElmanualRot()
+                            if self.BFR_EL_MODE is AxisMode.ManuSet and self.EL_MODE is AxisMode.ManuStop or (self.BFR_EL_MODE is AxisMode.Prog and self.EL_MODE is AxisMode.Manu):
+                                El=elrot
+                        
+                        if Az is None and El is None and self.AZ_MODE:
+                            self.executeAxisRead()
+                        else:
+                            self.executeAxisUpdate(azrot=(Az if Az is not None else azrot),elrot=(El if El is not None else elrot))
+        self.sleep()
+        self.readCommand()
+    
     def SerialFunc(self):
-        super(AnntenaController,self).SerialFunc()
+        #self.serialInputter.setserial(self)
         self.readCommand()
         self.setUpAntenna()
         if self.setUped:
@@ -1810,7 +1098,7 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                         else:
                             self.executeAxisUpdate(azrot=(Az if Az is not None else azrot),elrot=(El if El is not None else elrot))
                                                 
-
+        self.sleep()
                         #"print(time_diff)  # 処理にかかった時間データを使用
 
     def readCommand(self):
@@ -1897,16 +1185,18 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             ASCII=text.encode('ascii')#上記のコマンドをアスキーに変換しています pythonではByte型にこの時点でなっています
             self.Serial.write(ASCII)
         else:
-            #time.sleep(len(text)*0.001)
+            time.sleep(len(text)*0.001)
             print("SerialWrite:",(len(text)*0.001))
             self.ACUAgent.setMessage(text.encode('ascii'))
             
     def readline(self):
         return self.ACUAgent.getResult()
         
-    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None,movent=None,testMode=False):
-        super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType,inputter=inputter,testMode=testMode)
-        self.serialInputter.Myserial=self
+    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None,movent=None,testMode=False,Type=Type):
+        super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType,inputter=inputter,testMode=testMode,Type=Type)
+        #self.serialInputter.Myserial=self
+        self.serialInputter.setserial(self)
+        self.serialInputter.Type=Type
         self.AzStatsManager=AxisStatsManager(name="AZ")
         self.ElStatsManager=AxisStatsManager(name="EL")
         self.planets = load('de421.bsp')
@@ -1920,37 +1210,930 @@ class AnntenaController(Serialcommunicator4GeneralUse):
         if testMode:
             self.ACUAgent=AnntenaAgent(movent)
 
-class InputRoopClass(AsyncedClass):
+class AnntenaMovement(AsyncedClass):
+    kp = 1.5  # 任意の値、調整が必要
+    ki = 0.001  # 任意の値、調整が必要
+    kd = 0.01  # 任意の値、調整が必要
+    prev_Azerror = 0
+    Azintegral = 0
+    prev_Elerror = 0
+    Elintegral = 0
+    start=0
+    def Async(self):
+        self.start = time.time()  # 現在時刻（処理開始前）を取得
+        if self.ACUmonitor.frontend_rooped:
+            if isinstance(self.Agent,AnntenaAgent):
+                if self.Agent.On:#getAzStats,posMode,rate
 
-    data=None
+                    Azstats=self.Agent.getAzStats()
+                    Elstats=self.Agent.getElStats()
+                    #print("アンテナ代理",Azstats)
+                    if Azstats[2]=="posMode" or Azstats[2]=="rate":
+                        self.AzPID()
+                    if Elstats[2]=="posMode" or Elstats[2]=="rate":
+                        self.ElPID()
+            self.sleep()
+            end = time.time()  # 現在時刻（処理完了後）を取得
+            time_diff = end - self.start  # 処理完了後の時刻から処理開始前の時刻を減算する
+            print("[AnntenaMovement]DIFF=",time_diff)  # 処理にかかった時間データを使用
 
-    isSerialSet=False
+        
+    def AzPID(self):
+        dt = self.sleepTime
+        currentangle=self.convertHex2AzPos(self.Agent.AzRealRad)
+        target_angle=self.convertHex2AzPos(self.Agent.AzRad)
+        if abs(self.relative_angle(first_angle=currentangle, second_angle=target_angle))>0.01:
+            angular_velocity = self.calculate(setpoint=target_angle, current_value=currentangle, dt=dt,axis=1)
 
-    Myserial=None
-    
-    Mode="REAL" #or TEST
-    
-    def getdata(self):
-        re=self.data
-        self.data=""
+            # 角速度が制限範囲内に収める 
+            angular_velocity = max(-45, min(45, angular_velocity))
+
+            #print("BEFORE ADD ANGLE=",currentangle,"velo=",(angular_velocity * dt),"Tgt=",target_angle)
+            currentangle=self.add_angle(original_angle=currentangle,add_angle=(angular_velocity * dt))
+            #print("AFTER ADD ANGLE=",currentangle)
+            self.Agent.AzRealRad=self.convertDeg2Hex(currentangle)
+            #print(f"Current Angle: {currentangle}",f"Current Velocity:{angular_velocity}")
+            #Diff=self.relative_angle(first_angle=current_angle, second_angle=target_angle)
+            
+    def ElPID(self):
+        dt = self.sleepTime
+        currentangle=self.convertHex2ElPos(self.Agent.ElRealRad)
+        target_angle=self.convertHex2ElPos(self.Agent.ElRad)
+        if abs(self.relative_angle(first_angle=currentangle, second_angle=target_angle))>0.01:
+            angular_velocity = self.calculate(setpoint=target_angle, current_value=currentangle, dt=dt,axis=2)
+
+            # 角速度が制限範囲内に収める
+            angular_velocity = max(-45, min(45, angular_velocity))
+
+            currentangle=self.add_angle(original_angle=currentangle,add_angle=(angular_velocity * dt))
+                        
+            self.Agent.ElRealRad=self.convertDeg2Hex(currentangle)
+            #print(f"Current Angle: {currentangle}",f"Current Velocity:{angular_velocity}")
+            #Diff=self.relative_angle(first_angle=current_angle, second_angle=target_angle)
+     
+    def convertDeg2Hex(angle,mode=1):
+        '''
+        this is used to angle to sbca hex
+        mode=1:normal
+        mode=2:rate
+        '''
+        isminus=angle<0
+        angle=abs(angle)
+        oyabun=0.005493164
+        if mode==2:
+            oyabun=0.001373291
+        fixint=int(angle/oyabun)
+        hexvalue=hex(fixint)
+        first_digit=0
+        if mode==2:
+            binary_representation = bin(int(hexvalue, 16))[2:].zfill(16)
+            first_digit = binary_representation[0]
+            print(hexvalue,",",first_digit)
+
+        if ((isminus and first_digit=="0")or(not isminus and first_digit=="1")) and mode==2:
+            print("ISMINUS")
+            fixint=int(hexvalue,16)
+            fixint=~fixint
+            fixint+=65536
+            hexvalue=hex(fixint)
+            print(hexvalue)
+        re=""
+        for i in range(2,len(hexvalue)):
+            re+=str(hexvalue[i])
         return re
 
-    def Async(self):
-        if self.isSerialSet and isinstance(self.Myserial,serial.Serial):
-            self.data = self.Myserial.readline().decode('ascii')  
-            pass
-        elif self.isSerialSet and isinstance(self.Myserial,AnntenaController):
-            self.data = self.Myserial.readline().decode('ascii')  
-        else:
-            #print("成功!")
-            pass
-        self.sleep()
+    def convertHex2Deg(self,sbca_value, bit_count=16, resolution=360.0,mode=1):
+        """
+        Convert SBCA formatted value to angle.
+        """
+        hex_number = sbca_value  # 16進数として扱う文字列
+        decimal_value = int(hex_number, 16)
+        binary_number = bin(int(hex_number, 16))[2:].zfill(len(hex_number) * 4)  # 16進数を10進数に変換し、その後2進数に変換して0埋め
+        if binary_number[0]=="1" and mode==2:
+            decimal_value=(1 << (len(hex_number) * 4)) - decimal_value
+            decimal_value*=-1
+        normalized_value = decimal_value / 65535  # Normalize to [0, 1]
+        angle = normalized_value * resolution
+        return angle
 
+    def convertHex2AzPos(self,sbca_value):
+        return self.convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
+
+    def convertHex2ElPos(self,sbca_value):
+        return self.convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
+
+    def convertHex2Rate(self,sbca_value):
+        return self.convertHex2Deg(sbca_value=sbca_value,resolution=90.0,mode=2)
+
+    def calculate(self, setpoint, current_value, dt,axis=1):#axis 1=az,2=el
+        error = self.relative_angle(current_value,setpoint)
+        if axis==1:
+            self.Azintegral += error * dt
+            derivative = (error - self.prev_Azerror) / dt
+            output = self.kp * error + self.ki * self.Azintegral + self.kd * derivative
+            self.prev_Azerror = error
+        else:
+            self.Elintegral += error * dt
+            derivative = (error - self.prev_Elerror) / dt
+            output = self.kp * error + self.ki * self.Elintegral + self.kd * derivative
+            self.prev_Elerror = error
+        return output
+    
+    def relative_angle(self,first_angle, second_angle):
+        # 角度が範囲外の場合、正規化する
+        first_angle = first_angle % 360
+        second_angle = second_angle % 360
+
+        # 0°から見たときの相対角度を計算
+        relative_angle = second_angle - first_angle
+
+        # 結果が180°より大きい場合、-180°から180°の範囲に収める
+        if relative_angle > 180:
+            relative_angle -= 360
+        elif relative_angle < -180:
+            relative_angle += 360
+
+        return relative_angle
+    
+    def add_angle(self,original_angle,add_angle):
+        original_angle = original_angle % 360
+        add_angle = add_angle % 360
+        
+        angle=original_angle+add_angle
+        angle%=360
+        
+        if angle<0:
+            angle+=360
+            
+        return angle
+    
     def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
         self.sleepTime=sleepT
         self.message=message
         self.master=ma
+        self.ts=load.timescale(builtin=True)
         super().__init__(acu)
+   
+    def setAgent(self,Agentclass):
+        self.Agent=Agentclass
+
+class AnntenaAgent():
+    '''
+    アンテナを模倣したクラス]
+    text.split(split_word)
+    text.replace(delstr, '')
+    time.sleep(float(self.sleepTime))
+    '''
+    
+    bit_contents={"0-1-2":{"0":"stby","1":"rate","2":"SynSlave","3":"posMode"},"3":{"0":"Ifil","1":"Ⅱfil"}}
+    Error="@8"
+    IsInitialServo=False
+    IsInitialACU=False
+    
+    Result="ssss"
+    
+    On=False
+    Off=True
+    
+    AzStats="1000"
+    ElStats="1000"
+    
+    AzRad="0000"
+    ElRad="0000"
+    
+    AzRealRad="0000"
+    ElRealRad="0000"
+    
+    AzRate="0000"
+    ElRate="0000"
+    
+    AzFistPos=0
+    ElFirstPos=0
+    
+    ErrorTest=0
+    
+    def getResult(self):
+        re=""
+        self.ErrorTest+=1            
+        if isinstance(self.Result,bytes):
+            re.encode('ascii')
+            re=self.Result
+            
+        else:
+            re=""
+            re=re.encode('ascii')
+            
+        if self.ErrorTest>=10:
+            re="@?".encode('ascii')
+            #self.ErrorTest=0
+        T=len(re)*0.0001
+        if re.decode('ascii')=="@?":
+            T=0.1+T
+        print("ACUWRITE=",T)
+        time.sleep(T)
+
+        return re
+    
+    def __init__(self,Anntena):
+        if isinstance(Anntena,AnntenaMovement):
+            Anntena.setAgent(self)
+    
+    def getAzStats(self):
+        text_len=len(self.AzStats)
+        #print("getAzStats",self.AzStats)
+        re=[]
+        for i in range(1,text_len):
+            if i==1:
+                re.append(self.bit_contents["0-1-2"][self.AzStats[i]])
+            if i==2:
+                re.append(self.bit_contents["0-1-2"][self.AzStats[i]])
+            if i==3:
+                re.append(self.bit_contents["0-1-2"][self.AzStats[i]])
+        return re
+    
+    def getElStats(self):
+        text_len=len(self.ElStats)
+        #print("getElStats",self.ElStats)
+        re=[]
+        for i in range(1,text_len):
+            if i==1:
+                re.append(self.bit_contents["0-1-2"][self.ElStats[i]])
+            if i==2:
+                re.append(self.bit_contents["0-1-2"][self.ElStats[i]])
+            if i==3:
+                re.append(self.bit_contents["0-1-2"][self.ElStats[i]])
+        return re
+            
+    def SetInitialmode(self,text):
+        if text[0] is "@" and text[1] is "8":
+            self.IsInitialServo=True
+            self.IsInitialACU=False
+        elif text[0] is "@" and text[1] is "0":
+            self.IsInitialACU=True
+            self.IsInitialServo=False
+        else:
+            self.IsInitialServo=False
+            self.IsInitialACU=False
+
+    def deleateInitial(self,text,initial):
+        return text.replace(initial,'')
+
+    def splitSpace(self,text):
+        return text.split(" ")
+    
+    def splitText(self,text,sp):
+        re=[text]
+        if text.find(sp)>=0:
+            re=text.split(sp)
+        return re
+        
+    def setMessage(self,message):
+        re="@?"
+        print("[",type(self),"]data:",message.decode('ascii'))
+        if isinstance(message,bytes):
+            normMessage=message.decode('ascii') #or ascii
+            self.SetInitialmode(normMessage)
+            if self.IsInitialACU:
+                initialdeleate=self.deleateInitial(text=normMessage,initial="@0")
+                split=self.splitSpace(initialdeleate)
+                split[len(split)-1]=self.deleateInitial(text=split[len(split)-1],initial="\r\n")
+                if split[0] is "LBL":
+                    if split[1] is "R1":
+                        re="@0AZIMUTH"
+                    if split[1] is "R2":
+                        re="@0AZIMUTH,ELEVATION"
+                    if split[1] is "R3":
+                        re="@0AZIMUTH,ELEVATION,TILT"
+                if split[0] is "STA":
+                    if split[1] is "R40":
+                        re="@0"
+            elif self.IsInitialServo:
+                initialdeleate=self.deleateInitial(text=normMessage,initial="@8")
+                split=self.splitSpace(initialdeleate)
+                split[len(split)-1]=self.deleateInitial(text=split[len(split)-1],initial="\r\n")
+                
+                if split[0]=="DO":
+                    if split[1]=="W0300":
+                        re="@8"
+                        self.On=True
+                        self.Off=False
+                    if split[1]=="W0200":
+                        re="@8"
+                        self.On=False
+                        self.Off=True
+                    if split[1]=="R2":
+                        if self.On:
+                            re="@80300,0000"
+                            
+                        elif self.Off:
+                            re="@80200,0000"
+                elif split[0] == "MOD" and self.On:
+                    if split[1] == "R1":
+                        re="@8"+self.AzStats
+                    if split[1] == "R2":
+                        re="@8"+self.AzStats+","+self.ElStats
+                    elif split[1].find("W")>=0:
+                        initialdeleate=self.deleateInitial(text=split[1],initial="W")
+                        split2=self.splitText(text=initialdeleate,sp=",")
+                        split2[len(split2)-1]=self.deleateInitial(text=split2[len(split2)-1],initial="\r\n")
+                        
+                        for i in range(0,len(split2)):
+                            if i==0:
+                                self.AzStats=split2[0]
+                            if i==1:
+                                self.ElStats=split2[1]
+                        
+                        re="@8"
+                elif split[0] == "POS"and self.On:
+                    print("split2=",split)
+                    if split[1] == "R1":
+                        re="@8"+self.AzRealRad
+                    elif split[1] == "R2":
+                        re="@8"+self.AzRealRad+","+self.ElRealRad
+                    elif split[1].find("W")>=0:
+                        initialdeleate=self.deleateInitial(text=split[1],initial="W")
+                        split2=self.splitText(text=initialdeleate,sp=",")
+                        split2[len(split)-1]=self.deleateInitial(text=split2[len(split2)-1],initial="\r\n")
+                        for i in range(0,len(split2)):
+                            if i==0:
+                                self.AzRad=split2[0]
+                            if i==1:
+                                self.ElRad=split2[1]
+                        re="@8"
+                elif split[0] == "RTE"and self.On:
+                    if split[1] == "R1":
+                        re="@8"+self.AzRate
+                    elif split[1] == "R2":
+                        re="@8"+self.AzRate+","+self.ElRate
+                    elif split[1].find("W")>=0:
+                        initialdeleate=self.deleateInitial(text=split[1],initial="W")
+                        split2=self.splitText(text=initialdeleate,sp=",")
+                        split2[len(split)-1]=self.deleateInitial(text=split2[len(split2)-1],initial="\r\n")
+                        for i in range(0,len(split2)):
+                            if i==0:
+                                self.AzRad=split2[0]
+                            if i==1:
+                                self.ElRad=split2[1]
+                        re="@8"
+        print("[",type(self),"]RE:",re)
+        T=len(re)*0.001
+        if re=="@?":
+            T=0.1
+        time.sleep(T)
+        self.Result=re.encode('ascii')
+    
+class ComClassBase():
+    __serialCodes={'cr':"\r",'lf':"\n",'ack':'<<0x06>>','Space':'<<x20>>','cr(acu)':'<<x0d>>','ignoreM':'@?'}
+    
+    __isMessageSended=False
+    
+    __isMustCheckMessage=False
+    
+    __isMessageReceived=False
+    
+    __mySendedMessage="none"
+    
+    __recivedMessageContents=None
+    
+    __messageIgnoreTimes=3#何回応答メッセージが届かなかったら次の処理に移るかの目安
+    
+    __ignoretime=0
+    
+    __serialclass=None
+    
+    __executeStop=False
+    
+    __StopbyError=False
+    
+    
+    flag=False
+    start=0
+
+    def convertDeg2Hex(self,angle):
+        '''
+        this is used to angle to sbca hex
+        '''
+        fixint=int(angle/0.005493164)
+        return hex(fixint)
+    
+    def normNum(self,num,ren=2,value="9",normround=5):
+        find=num.find(".")
+        lengh=len(num)
+        okFlag=0
+        re=float(num)
+        if find!=-1:
+            for i in range(find+1,lengh-1):
+                if num[i] is value:
+                    okFlag+=1
+                else:
+                    break
+        if okFlag>=ren:
+            re=round(re)
+        else:
+            re=round(re,normround)
+        return re
+    
+    def convertHex2Deg(self,sbca_value="0000", bit_count=16, resolution=90.0,mode=1):
+        """
+        Convert SBCA formatted value to angle.
+        """
+        hex_number = sbca_value  # 16進数として扱う文字列
+        decimal_value = int(hex_number, 16)
+        binary_number = bin(int(hex_number, 16))[2:].zfill(len(hex_number) * 4)  # 16進数を10進数に変換し、その後2進数に変換して0埋め
+        if binary_number[0]=="1" and mode==2:
+            decimal_value=(1 << (len(hex_number) * 4)) - decimal_value
+            decimal_value*=-1
+        normalized_value = decimal_value / 65535  # Normalize to [0, 1]
+        angle = normalized_value * resolution
+        return angle
+    
+    def convertHex2AzPos(self,sbca_value):
+        return self.convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
+
+    def convertHex2ElPos(self,sbca_value):
+        return self.convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
+
+    def convertHex2Pos(self,sbca_value):
+        return self.convertHex2Deg(sbca_value=sbca_value,resolution=90.0,mode=2)
+
+    def executeCommand(self,command,isMustCheckMessage,ignoreTimes,getdata):
+        if self.__executeStop:
+            return
+        
+        
+        
+        self.__messageIgnoreTimes=ignoreTimes
+        self.__isMustCheckMessage=isMustCheckMessage
+        
+        if self.__ignoretime>=self.__messageIgnoreTimes or self.__isMessageReceived:
+            if self.__ignoretime>=self.__messageIgnoreTimes:
+                self.__StopbyError=True
+            self.setStopExecute()
+            
+        if self.__ignoretime>0:
+            command=self.__mySendedMessage
+
+        if self.__isMessageSended:#PCから送信済み
+            if self.__isMustCheckMessage:
+                if self.isIgnorePattern(getdata):#データが不十分過ぎたら
+                    self.__ignoretime+=1
+                    self.__isMessageSended=False
+                    end = time.time()  # 現在時刻（処理完了後）を取得
+                    time_diff = end - self.start  # 処理完了後の時刻から処理開始前の時刻を減算する
+                    print("データが不十分です"+getdata,type(self)," 時間",time_diff)
+                    self.start=0
+                else:
+                    self.checkMessage(getdata)#応答メッセージをチェックし、異常が無ければ
+                pass
+            else:
+                self.__isMessageSended=False
+                self.setStopExecute()
+        else:
+            print("WRITED",type(self),command)
+            self.start = time.time()  # 現在時刻（処理開始前）を取得
+            self.__serialWrite(command)
+            self.__isMessageSended=True
+            self.__mySendedMessage=command
+
+    def setIsMessageReceived(self):
+        self.__isMessageReceived=True
+
+    def getIgnoretime(self):
+        return self.__ignoretime
+    
+    def setMessageContents(self,text):
+        self.__recivedMessageContents=text
+        self.__isMessageReceived=True
+        self.setStopExecute()
+
+    def getTextDeleateStr(self,text,delstr):
+        return text.replace(delstr, '')
+    
+    def getSplitText(self,text,split_word=','):
+        return text.split(split_word)
+
+    def getStopstats(self):
+        return {"isStop":self.__executeStop,"byError":self.__StopbyError}
+    
+    def getContents(self):
+        return self.__recivedMessageContents
+
+    def getReceivedMessageContents(self):
+        pass
+            
+    def checkMessage(self,message):#以上が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
+        pass
+    
+    def setStopExecute(self):
+        self.__executeStop=True
+        self.__ignoretime=0
+        self.__mySendedMessage="none"
+        self.__isMessageSended=False
+        self.__isMustCheckMessage=False
+        self.__isMessageReceived=False
+
+        end = time.time()  # 現在時刻（処理完了後）を取得
+        time_diff = end - self.start  # 処理完了後の時刻から処理開始前の時刻を減算する
+        print("[",type(self),"]:終了します","Error",self.__StopbyError,"開始時間:",self.start,"終了時間",end,"時間",time_diff)
+        self.start=0
+   
+    def setEnableExecute(self):
+        self.__executeStop=False
+        self.__StopbyError=False
+        self.__recivedMessageContents=None
+        
+    def reset(self):
+        self.__executeStop=False
+        self.__StopbyError=False
+        self.__recivedMessageContents=None
+        self.__ignoretime=0
+        self.__mySendedMessage="none"
+        self.__isMessageSended=False
+        self.__isMustCheckMessage=False
+        self.__isMessageReceived=False
+        print("[",type(self),"]:リセットします")
+
+
+        
+    def __normalizeCode(self,code):
+        return code
+    
+    def getSendedMessage(self):
+        return self.__mySendedMessage
+    
+    def isIgnorePattern(self,message):#子クラスでオーバーライド
+        pass
+    
+    def getnormSerialCode(self,serialcode="none"):
+        normCode=self.__normalizeCode(serialcode)
+        return self.__serialCodes[normCode]
+    
+    def __serialWrite(self,code="@0BAU W9600"):
+        if  isinstance(self.__serialclass,Serialcommunicator4GeneralUse):
+            code+=(self.__serialCodes['cr']+self.__serialCodes['lf'])
+            self.__serialclass.SerialWrite(code)
+
+    def __init__(self,serialclass=None):
+        self.__serialclass=serialclass
+        print("初期化完了")
+
+class powerOnOffCom(ComClassBase):
+    def __init__(self,serialclass=None):
+        super().__init__(serialclass=serialclass)
+
+    def isIgnorePattern(self,message):#子クラスでオーバーライド
+        super(powerOnOffCom,self).isIgnorePattern(message)
+        re=False
+        if isinstance(message,str):
+            ig=message.find(self.getnormSerialCode('ignoreM'))
+            ig=(ig>=0)
+            nothing=message is ""
+            re=(ig or nothing)
+        return re
+    
+    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
+        super(powerOnOffCom,self).checkMessage(message)
+        if isinstance(message,str):
+            In8=message.find("@8")
+            if In8>=0:
+                if self.getSendedMessage().find("0300")>=0:
+                    self.setMessageContents(True)
+                if self.getSendedMessage().find("0200")>=0:
+                    self.setMessageContents(False)
+
+    def getReceivedMessageContents(self):
+        super(powerOnOffCom,self).getReceivedMessageContents()
+        return self.getContents()
+
+class checkoutputCom(ComClassBase):
+    def __init__(self,serialclass=None):
+        super().__init__(serialclass=serialclass)
+
+    def isIgnorePattern(self,message):#子クラスでオーバーライド
+        super(checkoutputCom,self).isIgnorePattern(message)
+        re=False
+        if isinstance(message,str):
+            ig=message.find(self.getnormSerialCode('ignoreM'))
+            ig=(ig>=0)
+            nothing=message is ""
+            re=(ig or nothing)
+        return re
+    
+    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
+        super(checkoutputCom,self).checkMessage(message)
+        if isinstance(message,str):
+            InRpos=self.getSendedMessage().find("R")
+            isInR=InRpos>=0
+            if isInR:
+                deleateInitial=self.getTextDeleateStr(text=message,delstr='@8')
+                howmany=int(self.getSendedMessage()[InRpos+1])
+                AzEl=self.getSplitText(text=deleateInitial)
+                if howmany==2:
+                    if AzEl[0]=="0300":
+                        self.setMessageContents(True)
+                    elif AzEl[0]=="0200":
+                        self.setMessageContents(False)
+
+    def getReceivedMessageContents(self):
+        super(checkoutputCom,self).getReceivedMessageContents()
+        return self.getContents()
+        
+class AxisModeCom(ComClassBase):
+    
+    bit_contents={"0-1-2":{"0":"stby","1":"rate","2":"SynSlave","3":"posMode"},"3":{"0":"Ifil","1":"Ⅱfil"}}
+    
+    def __init__(self,serialclass=None):
+        super().__init__(serialclass=serialclass)
+        
+    def isIgnorePattern(self,message):#子クラスでオーバーライド
+        super(AxisModeCom,self).isIgnorePattern(message)
+        re=False
+        if isinstance(message,str):
+            ig=message.find(self.getnormSerialCode('ignoreM'))
+            ig=(ig>=0)
+            nothing=message is ""
+            re=(ig or nothing)
+        return re
+    
+    def getMessageContents(self,text):
+        text_len=len(text)
+        re=[]
+        for i in range(1,text_len):
+            if i==1:
+                re.append(self.bit_contents["0-1-2"][text[i]])
+            if i==2:
+                re.append(self.bit_contents["0-1-2"][text[i]])
+            if i==3:
+                re.append(self.bit_contents["0-1-2"][text[i]])
+        return re
+            
+    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
+        super(AxisModeCom,self).checkMessage(message)
+        if isinstance(message,str):
+            InRpos=self.getSendedMessage().find("R")
+            isInR=InRpos is not -1
+            InWpos=self.getSendedMessage().find("W")
+            isInW=InWpos is not -1
+            if isInR:
+                deleateInitial=self.getTextDeleateStr(text=message,delstr='@8')
+                howmany=int(self.getSendedMessage()[InRpos+1])
+                if howmany==1:
+                    az=self.getMessageContents(deleateInitial)
+                    self.setMessageContents({"Az":az[2]})
+                elif howmany==2:
+                    AzEl=self.getSplitText(text=deleateInitial)
+                    
+                    az=self.getMessageContents(AzEl[0])
+                    el=self.getMessageContents(AzEl[1])
+                    self.setMessageContents({"Az":az[2],"El":el[2]})
+            if isInW:
+                print("self.getSendedMessage=",self.getSendedMessage())
+                deleateInitial=self.getTextDeleateStr(text=self.getSendedMessage(),delstr='@8MOD W')
+                howmany=int(deleateInitial.count(",")+1)
+                if howmany==1:
+                    az=self.getMessageContents(deleateInitial)
+                    self.setMessageContents({"Az":az[2]})
+                elif howmany==2:
+                    AzEl=self.getSplitText(text=deleateInitial)
+                    az=self.getMessageContents(AzEl[0])
+                    el=self.getMessageContents(AzEl[1])
+                    self.setMessageContents({"Az":az[2],"El":el[2]})
+             
+    def getReceivedMessageContents(self):
+        super(AxisModeCom,self).getReceivedMessageContents()
+        return self.getContents()
+
+class PositionCom(ComClassBase):
+     
+    def __init__(self,serialclass=None):
+        super().__init__(serialclass=serialclass)
+
+    def isIgnorePattern(self,message):#子クラスでオーバーライド
+        super(PositionCom,self).isIgnorePattern(message)
+        re=False
+        if isinstance(message,str):
+            ig=message.find(self.getnormSerialCode('ignoreM'))
+            ig=(ig>=0)
+            nothing=message is ""
+            re=(ig or nothing)
+        return re
+    
+    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
+        super(PositionCom,self).checkMessage(message)
+        if isinstance(message,str):
+            InRpos=self.getSendedMessage().find("R")
+            isInR=InRpos is not -1
+            InWpos=self.getSendedMessage().find("W")
+            isInW=InWpos is not -1
+
+            if isInR:
+                deleateInitial=self.getTextDeleateStr(text=message,delstr='@8')
+                howmany=int(self.getSendedMessage()[InRpos+1])
+                if howmany==1:
+                    self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=deleateInitial,resolution=360)})
+                elif howmany==2:
+                    AzEl=self.getSplitText(text=deleateInitial)
+                    print("AZ",AzEl[0])
+                    print(type(AzEl[0]))
+                    self.setMessageContents({"Az":self.convertHex2AzPos(sbca_value=AzEl[0]),"El":self.convertHex2ElPos(sbca_value=AzEl[1])})
+            if isInW:
+                deleateInitial=self.getTextDeleateStr(text=self.getSendedMessage(),delstr='@8POS W')
+                print("now ignore=",self.getIgnoretime())
+                howmany=int(deleateInitial.count(",")+1)
+                if howmany==1:
+                    self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=deleateInitial,resolution=360)})
+                elif howmany==2:
+                    AzEl=self.getSplitText(text=deleateInitial)
+                    self.setMessageContents({"Az":self.convertHex2Deg(sbca_value=AzEl[0],resolution=360),"El":self.convertHex2Deg(sbca_value=AzEl[1],resolution=360)})
+
+    def getReceivedMessageContents(self):
+        super(PositionCom,self).getReceivedMessageContents()
+        return self.getContents()
+        
+
+class ObserbDiffClass():
+    
+    __nowstats=None
+    
+    __beforestats=None
+    
+    __statsType=1
+    
+    __ischange=False
+    
+    
+    '''
+    __statsType
+    1=数字
+    2=CommandMode
+    '''
+    
+    def setNowstats(self,stats):
+        self.__nowstats=stats
+        self.setStats()
+        
+    def setbeforestats(self,stats):
+        self.__beforestats=stats
+        
+    def __init__(self,statsType):
+        self.__statsType=statsType
+        if statsType==1:
+            self.__beforestats=0
+            self.__nowstats=0
+            
+    def isValue(self,n):
+        re=False
+        if isinstance(n, int):
+            re=True
+        if isinstance(n, float):
+            re=True
+        return re
+        
+    def setStats(self):#どちらかがNoneでも実行する場合もある
+        re=False
+        if self.__statsType==1 and self.isValue(self.__nowstats) and self.isValue(self.__beforestats):
+            if self.__nowstats is not self.__beforestats:
+                re=True
+        if self.__statsType==2:
+            if self.__nowstats is not self.__beforestats:
+                re=True
+        self.__ischange=re
+        
+    def getchangeStats(self):
+        return self.__ischange
+    
+    def getNowstats(self):
+        return self.__nowstats
+    
+    def getBfrstats(self):
+        return self.__beforestats
+    
+    def chancellnow(self):
+        self.__nowstats=self.__beforestats
+        
+class RotManager(ObserbDiffClass):
+    
+    bfr_time=None
+    
+    speed=0
+    
+    def __init__(self):
+        super().__init__(statsType=1)
+        self.setNowstats(stats=None)
+        self.setbeforestats(stats=None)
+        
+    def reset(self):
+        self.bfr_time=None
+        self.update_interval=None
+        self.setNowstats(stats=None)
+        self.setbeforestats(stats=None)
+        self.speed=0
+
+    def updateRot(self,rot):
+        self.setbeforestats(self.getNowstats())
+        self.setNowstats(rot)
+        if self.bfr_time is None:
+            self.bfr_time=time.time()
+        if self.getchangeStats():
+            end = time.time()  # 現在時刻（処理完了後）を取得
+            interval = end - self.bfr_time  # 処理完了後の時刻から処理開始前の時刻を減算する
+            self.speed=self.relative_angle(first_angle=self.getBfrstats(), second_angle=self.getNowstats())/interval
+            
+
+    def relative_angle(self,first_angle, second_angle):
+        # 角度が範囲外の場合、正規化する
+        first_angle = first_angle % 360
+        second_angle = second_angle % 360
+
+        # 0°から見たときの相対角度を計算
+        relative_angle = second_angle - first_angle
+
+        # 結果が180°より大きい場合、-180°から180°の範囲に収める
+        if relative_angle > 180:
+            relative_angle -= 360
+        elif relative_angle < -180:
+            relative_angle += 360
+
+        return relative_angle
+
+class AxisStatsManager():
+    
+    __nowProgRot=None
+    
+    __nowRealRot=0
+    
+    __axisStats=None
+    
+    __statsCommand="0001"#prog
+    
+    __NowAxisMode=None
+    
+    __BfrAxisMode=None
+        
+    __rotation_manager=None
+    
+    name="AZ"
+    
+    def setRealRot(self,rot):
+        self.__nowRealRot=rot
+        self.__rotation_manager.updateRot(rot=rot)
+        
+    def getRealRot(self):
+        return self.__nowRealRot
+    
+    def getProgRot(self):
+        return self.__nowProgRot
+
+        
+    def setProgRot(self,rot):
+        self.__nowProgRot=rot
+
+    
+    def getRotSpeed(self):
+        return self.__rotation_manager.speed
+    
+    def __init__(self,name=""):
+        self.__rotation_manager=RotManager()
+        self.name=name
+        
+        
+    def reset(self):
+        self.__nowProgRot=None
+        self.__nowRealRot=0
+        self.__axisStats=None
+        self.__statsCommand="0001"
+        self.__rotation_manager.reset()
+        self.__NowAxisMode=None
+        self.__BfrAxisMode=None
+        
+    def setStatsCom(self,com):
+        self.__statsCommand=com
+        
+        
+    def getStatsCom(self):
+        return self.__statsCommand
+    
+
+    def updateStats(self,axisStats):
+        if isinstance(axisStats,AxisMode):
+            #print("STATS_THE=",axisStats,self.name)
+            self.__BfrAxisMode=self.__NowAxisMode
+            self.__NowAxisMode=axisStats
+            
+    def getStats(self):
+        return {"nowAxismode":self.__NowAxisMode,"bfrAxismode":self.__BfrAxisMode}
+    
+    def isstby2notstby(self):
+        return self.__BfrAxisMode is AxisMode.Stby and self.__NowAxisMode is AxisMode.Stby
+
+    def isstats2stby(self):
+        return self.__BfrAxisMode is not AxisMode.Stby and self.__NowAxisMode is AxisMode.Stby
+    
+    def isstats2manustop(self):
+        return self.__BfrAxisMode is not AxisMode.ManuStop and self.__NowAxisMode is AxisMode.ManuStop
+
+    def isstats2manuset(self):
+        return self.__BfrAxisMode is not AxisMode.ManuSet and self.__NowAxisMode is AxisMode.ManuSet
 
 class GPSManager(Serialcommunicator4GeneralUse):
     
@@ -2388,6 +2571,34 @@ class PRINT():
         time.sleep(0.1)
         print("せいこうだ!")
 
+class ASYNC(multiprocessing.Process):
+    funcClass=None
+    
+    def __init__(self,funcClass=None):
+        super().__init__()
+        if isinstance(funcClass,AsyncedClass):
+            self.funcClass=funcClass
+            #self.start()
+            
+    #def start(self):
+        #super(ASYNC,self).start()
+        
+    def kill(self):
+        self.funcClass.killed_func()
+        self.terminate()
+
+    def run(self):
+        while self.is_alive():
+            #print("へいへいようよう！")
+            if isinstance(self.funcClass, AsyncedClass):
+                try:
+                    self.funcClass.Async()
+                except Exception as e:
+                    print("同期するクラスに、Async()と名前付けされている関数がありません,もしくはそれ以外のエラーが起きています")
+                    import traceback
+                    traceback.print_exc()
+                    self.kill()
+
 class Async(threading.Thread):
     FuncClass=None
     Func=None
@@ -2415,13 +2626,10 @@ class Async(threading.Thread):
     def kill(self):
         self.alive = False
         print("ASYNC_KILLED")
-        self.killed_func()
+        self.FuncClass.killed_func()
         self.started.set()
         self.join()
         
-    def killed_func(self):
-        pass
-
     def run(self):
         while self.alive:
             if self.FuncClass is not None and self.alive:
