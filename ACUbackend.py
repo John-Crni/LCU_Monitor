@@ -427,8 +427,6 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
     Type=1
     #--TEST--
     
-    
-    
     def killed_func(self):
         super(Serialcommunicator4GeneralUse,self).killed_func()
         print("I'm First!")
@@ -533,6 +531,7 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
                     self.serialInputter.Myserial=self.Serial
             if self.getConectStats() and self.mode:
                 try:
+                    
                     if self.Type==1:
                         self.SerialFunc()
                     elif self.Type==2:
@@ -561,6 +560,10 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
     
     def readCommand(self):
         pass
+
+    def conected2Realmachine(self):
+        self.serialInputter.setserial(self.Serial)
+
     
     def __init__(self,testMode=False,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None,Type=1):
         self.Type=Type
@@ -587,14 +590,16 @@ class InputRoopClass(AsyncedClass):
     Type=2
     
     def setserial(self,ser):
+        if ser is not None:
+            self.isSerialSet=True
         self.Myserial=ser
     
     def getdata(self):
         re=""
-        if self.Type==1:
+        if self.Type==1 and self.isSerialSet and (isinstance(self.Myserial,AnntenaController) or isinstance(self.Myserial,serial.Serial)):
             re=self.data
             self.data=""
-        elif self.isSerialSet and isinstance(self.Myserial,AnntenaController):
+        elif self.isSerialSet and (isinstance(self.Myserial,AnntenaController) or isinstance(self.Myserial,serial.Serial)):
             self.data = self.Myserial.readline().decode('ascii')  
             re=self.data
             self.data=""
@@ -603,19 +608,12 @@ class InputRoopClass(AsyncedClass):
     def Async(self):
         start = time.time()  # 現在時刻（処理開始前）を取得
 
-        if self.isSerialSet and isinstance(self.Myserial,serial.Serial):
+        if self.isSerialSet and isinstance(self.Myserial,serial.Serial)and self.Type==1:
             self.data = self.Myserial.readline().decode('ascii')  
             pass
         elif self.isSerialSet and isinstance(self.Myserial,AnntenaController) and self.Type==1:
             self.data = self.Myserial.readline().decode('ascii')  
-            #print("isinstance(self.Myserial,AnntenaController)")
-        else:
-            #print("成功!")
-            pass
-        self.sleep()
-        end = time.time()  # 現在時刻（処理完了後）を取得
-        time_diff = end - start  # 処理完了後の時刻から処理開始前の時刻を減算する
-        print("[InputRoopClass]DIFF=",time_diff)  # 処理にかかった時間データを使用
+
 
     def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
         self.sleepTime=sleepT
@@ -653,6 +651,7 @@ class AnntenaController(Serialcommunicator4GeneralUse):
     CheckOutPutCom=None
     AxisModeCom=None
     PositionCom=None
+    AxisRateCom=None
     
     IscheckPowerOn=None
     PowerOn=False
@@ -790,12 +789,26 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             relative_angle += 360
         return relative_angle
 
-    def convertDeg2Hex(self,angle):
+    def convertDeg2Hex(self,angle,mode=1):
         '''
         this is used to angle to sbca hex
         '''
-        fixint=int(angle/0.005493164)
+        isminus=angle<0
+        angle=abs(angle)
+        oyabun=0.005493164
+        if mode==2:
+            oyabun=0.001373291
+        fixint=int(angle/oyabun)
         hexvalue=hex(fixint)
+        first_digit=0
+        if mode==2:
+            binary_representation = bin(int(hexvalue, 16))[2:].zfill(16)
+            first_digit = binary_representation[0]
+        if ((isminus and first_digit=="0")or(not isminus and first_digit=="1")) and mode==2:
+            fixint=int(hexvalue,16)
+            fixint=~fixint
+            fixint+=65536
+            hexvalue=hex(fixint)
         re=""
         for i in range(2,len(hexvalue)):
             re+=str(hexvalue[i])
@@ -865,29 +878,24 @@ class AnntenaController(Serialcommunicator4GeneralUse):
         self.executeCommand(kind=CommandMode.UpdateAxisMode,comvalue="@8MOD W"+self.AzStatsManager.getStatsCom()+",1003")    
 
     def executeAxisRead(self):
-        self.executeCommand(kind=CommandMode.ReadAxis,comvalue="@8POS R2")    
+        self.executeCommand(kind=CommandMode.ReadAxis,comvalue="@8POS R2")
+
+    def executeAxisRateRead(self):
+        self.executeCommand(kind=CommandMode.ReadAxisRate,comvalue="@8RTE R2")
+
+    def executeAxisRateUpdate(self,azrate=0,elrate=0):
+        az=self.convertDeg2Hex(angle=azrate,mode=2)
+        el=self.convertDeg2Hex(angle=elrate,mode=2)
+        self.executeCommand(kind=CommandMode.ReadAxisRate,comvalue="@8RTE W"+az+","+el)
 
     def executeAxisUpdate(self,azrot=0,elrot=0):
-        az=self.convertDeg2Hex(angle=azrot)
-        el=self.convertDeg2Hex(angle=elrot)
-        self.executeCommand(kind=CommandMode.UpdateAxis,comvalue="@8POS W"+az+","+el)    
+        az=self.convertDeg2Hex(angle=azrot,mode=1)
+        el=self.convertDeg2Hex(angle=elrot,mode=1)
+        self.executeCommand(kind=CommandMode.UpdateAxis,comvalue="@8POS W"+az+","+el)  
 
     def AzorEl2AxisModeChange(self):
         return self.ischangeAz2notStby() or self.ischangeAz2Stby() or self.ischangeEl2notStby() or self.ischangeEl2Stby()
 
-    def convertDeg2Hex(self,angle):
-        '''
-        this is used to angle to sbca hex
-        '''
-        angle%=360
-        if angle<0:
-            angle+=360
-        fixint=int(angle/0.005493164)
-        hexvalue=hex(fixint)
-        re=""
-        for i in range(2,len(hexvalue)):
-            re+=str(hexvalue[i])
-        return re.upper()
     
     def getAngleDiff(self,first_angle, second_angle):
         # 角度が範囲外の場合、正規化する
@@ -917,20 +925,10 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             self.AxisComStats=CommandMode.ReadAxis
         elif isinstance(self.AxisComStats,CommandMode):
             if self.AxisComStats is CommandMode.ReadAxis:
-                self.AxisComStats=CommandMode.ReadAxisMode
-            elif self.AxisComStats is CommandMode.ReadAxisMode:
+                self.AxisComStats=CommandMode.ReadAxisRate
+            elif self.AxisComStats is CommandMode.ReadAxisRate:
                 self.AxisComStats=CommandMode.UpdateAxis                
             elif self.AxisComStats is CommandMode.UpdateAxis:
-                if self.flag:
-                    self.flag=False
-                    end = time.time()  # 現在時刻（処理完了後）を取得
-                    time_diff = end - self.start  # 処理完了後の時刻から処理開始前の時刻を減算する
-                    print("[UpdateAxis]DIFF=",time_diff)  # 処理にかかった時間データを使用
-                else:
-                    self.flag=True
-                    self.start = time.time()  # 現在時刻（処理開始前）を取得
-                    print("[UpdateAxis]DIFF_START")
-
                 self.AxisComStats=CommandMode.ReadAxis
         return self.AxisComStats
     
@@ -949,6 +947,17 @@ class AnntenaController(Serialcommunicator4GeneralUse):
         if isinstance(kind,CommandMode) and comvalue!="" and not self.EXECUTED:
             self.READED=False
             self.EXECUTED=True
+
+            if kind is CommandMode.ReadAxisRate:
+                self.NowCommandKind=CommandMode.ReadAxisRate
+                self.NowCommand=self.AxisRateCom#setEnableExecute
+                self.NowCommand.executeCommand(command=comvalue,isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
+
+            if kind is CommandMode.UpdateAxisRate:
+                self.NowCommandKind=CommandMode.UpdateAxisRate
+                self.NowCommand=self.AxisRateCom#setEnableExecute
+                self.NowCommand.executeCommand(command=comvalue,isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.data)
+
             
             if kind is CommandMode.ReadDgIoPort:
                 self.NowCommandKind=CommandMode.ReadDgIoPort
@@ -1070,8 +1079,8 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                     do=self.getwhatdoAxisCom()
                     if do is CommandMode.ReadAxis:
                         self.executeAxisRead()
-                    elif do is CommandMode.ReadAxisMode:
-                        self.executeCommand(kind=CommandMode.ReadAxisMode,comvalue="@8MOD R2")
+                    elif do is CommandMode.ReadAxisRate:
+                        self.executeAxisRateRead()
                     elif self.CONTROL_MODE is ACUControlMode.Slave:
                         planet_coords=self.ACUmonitor.FrontEnd.getPlanetCoords()
                         Az,El=self.getAzELrot(planet_coords)
@@ -1159,6 +1168,9 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                     self.setText2CommandLine(text="PedstralIsWorking")
                 if self.NowCommandKind is CommandMode.ReadDgIoPort:
                     self.IscheckPowerOn=self.NowCommand.getContents()
+                if self.NowCommandKind is CommandMode.ReadAxisRate or CommandMode.UpdateAxisRate:
+                    buffer=self.NowCommand.getContents()
+                
                 self.NowCommand.setEnableExecute()
                 self.NowCommandKind=None
                 self.NowCommand=None
@@ -1170,6 +1182,9 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                     self.NowCommand.executeCommand(command="",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.getdata())
                 if self.NowCommandKind is CommandMode.UpdateAxis or self.NowCommandKind is CommandMode.ReadAxis:
                     self.NowCommand.executeCommand(command="",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.getdata())
+                if self.NowCommandKind is CommandMode.UpdateAxisRate or self.NowCommandKind is CommandMode.ReadAxisRate:
+                    self.NowCommand.executeCommand(command="",isMustCheckMessage=True,ignoreTimes=3,getdata=self.serialInputter.getdata())
+
             elif stopstats["byError"] and stopstats["isStop"]:
                 self.NowCommand.setStopExecute()
                 self.NowCommand.setEnableExecute()
@@ -1181,7 +1196,7 @@ class AnntenaController(Serialcommunicator4GeneralUse):
                 pass#ここにエラー時の処理を書く
 
     def SerialWrite(self,text):#isinstance(self.Serial,serial):
-        if self.Serial is not None and self.ControllMode is "REAL":
+        if isinstance(self.Serial,serial.Serial):
             ASCII=text.encode('ascii')#上記のコマンドをアスキーに変換しています pythonではByte型にこの時点でなっています
             self.Serial.write(ASCII)
         else:
@@ -1190,12 +1205,27 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             self.ACUAgent.setMessage(text.encode('ascii'))
             
     def readline(self):
-        return self.ACUAgent.getResult()
+        re=None
+        if isinstance(self.Serial,serial.Serial):
+            re=self.Serial.readline()
+        else:
+            re=self.ACUAgent.getResult()
+        return re
+
+
         
-    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None,movent=None,testMode=False,Type=Type):
+    def __init__(self,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None,movent=None,testMode=False,Type=1):
         super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType,inputter=inputter,testMode=testMode,Type=Type)
         #self.serialInputter.Myserial=self
-        self.serialInputter.setserial(self)
+        if testMode:
+            self.serialInputter.setserial(self)
+            self.ACUAgent=AnntenaAgent(movent)
+        self.PowerOnOffCom=powerOnOffCom(serialclass=self)
+        self.CheckOutPutCom=checkoutputCom(serialclass=self)
+        self.AxisModeCom=AxisModeCom(serialclass=self)
+        self.PositionCom=PositionCom(serialclass=self)
+        self.AxisRateCom=AxisRateCom(serialclass=self)
+
         self.serialInputter.Type=Type
         self.AzStatsManager=AxisStatsManager(name="AZ")
         self.ElStatsManager=AxisStatsManager(name="EL")
@@ -1203,12 +1233,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
         self.Earth=self.planets['earth']
         self.Site=self.Earth+wgs84.latlon(45, 5)
         self.TimeScale=load.timescale(builtin=True)
-        self.PowerOnOffCom=powerOnOffCom(serialclass=self)
-        self.CheckOutPutCom=checkoutputCom(serialclass=self)
-        self.AxisModeCom=AxisModeCom(serialclass=self)
-        self.PositionCom=PositionCom(serialclass=self)
-        if testMode:
-            self.ACUAgent=AnntenaAgent(movent)
 
 class AnntenaMovement(AsyncedClass):
     kp = 1.5  # 任意の値、調整が必要
@@ -1271,32 +1295,12 @@ class AnntenaMovement(AsyncedClass):
             #print(f"Current Angle: {currentangle}",f"Current Velocity:{angular_velocity}")
             #Diff=self.relative_angle(first_angle=current_angle, second_angle=target_angle)
      
-    def convertDeg2Hex(angle,mode=1):
+    def convertDeg2Hex(self,angle):
         '''
         this is used to angle to sbca hex
-        mode=1:normal
-        mode=2:rate
         '''
-        isminus=angle<0
-        angle=abs(angle)
-        oyabun=0.005493164
-        if mode==2:
-            oyabun=0.001373291
-        fixint=int(angle/oyabun)
+        fixint=int(angle/0.005493164)
         hexvalue=hex(fixint)
-        first_digit=0
-        if mode==2:
-            binary_representation = bin(int(hexvalue, 16))[2:].zfill(16)
-            first_digit = binary_representation[0]
-            print(hexvalue,",",first_digit)
-
-        if ((isminus and first_digit=="0")or(not isminus and first_digit=="1")) and mode==2:
-            print("ISMINUS")
-            fixint=int(hexvalue,16)
-            fixint=~fixint
-            fixint+=65536
-            hexvalue=hex(fixint)
-            print(hexvalue)
         re=""
         for i in range(2,len(hexvalue)):
             re+=str(hexvalue[i])
@@ -1414,7 +1418,7 @@ class AnntenaAgent():
     
     def getResult(self):
         re=""
-        self.ErrorTest+=1            
+        #self.ErrorTest+=1            
         if isinstance(self.Result,bytes):
             re.encode('ascii')
             re=self.Result
@@ -1423,13 +1427,13 @@ class AnntenaAgent():
             re=""
             re=re.encode('ascii')
             
-        if self.ErrorTest>=10:
-            re="@?".encode('ascii')
+        #if self.ErrorTest>=10:
+            #re="@?".encode('ascii')
             #self.ErrorTest=0
         T=len(re)*0.0001
         if re.decode('ascii')=="@?":
             T=0.1+T
-        print("ACUWRITE=",T)
+        #print("ACUWRITE=",T)
         time.sleep(T)
 
         return re
@@ -1581,7 +1585,7 @@ class AnntenaAgent():
             T=0.1
         time.sleep(T)
         self.Result=re.encode('ascii')
-    
+
 class ComClassBase():
     __serialCodes={'cr':"\r",'lf':"\n",'ack':'<<0x06>>','Space':'<<x20>>','cr(acu)':'<<x0d>>','ignoreM':'@?'}
     
@@ -1605,16 +1609,36 @@ class ComClassBase():
     
     __StopbyError=False
     
-    
     flag=False
     start=0
 
-    def convertDeg2Hex(self,angle):
+    def setSerial(self,serial):
+        self.__serialclass=serial
+
+    def convertDeg2Hex(self,angle,mode=1):
         '''
         this is used to angle to sbca hex
         '''
-        fixint=int(angle/0.005493164)
-        return hex(fixint)
+        isminus=angle<0
+        angle=abs(angle)
+        oyabun=0.005493164
+        if mode==2:
+            oyabun=0.001373291
+        fixint=int(angle/oyabun)
+        hexvalue=hex(fixint)
+        first_digit=0
+        if mode==2:
+            binary_representation = bin(int(hexvalue, 16))[2:].zfill(16)
+            first_digit = binary_representation[0]
+        if ((isminus and first_digit=="0")or(not isminus and first_digit=="1")) and mode==2:
+            fixint=int(hexvalue,16)
+            fixint=~fixint
+            fixint+=65536
+            hexvalue=hex(fixint)
+        re=""
+        for i in range(2,len(hexvalue)):
+            re+=str(hexvalue[i])
+        return re
     
     def normNum(self,num,ren=2,value="9",normround=5):
         find=num.find(".")
@@ -1653,47 +1677,46 @@ class ComClassBase():
     def convertHex2ElPos(self,sbca_value):
         return self.convertHex2Deg(sbca_value=sbca_value,resolution=360.0,mode=1)
 
-    def convertHex2Pos(self,sbca_value):
+    def convertHex2Rate(self,sbca_value):
         return self.convertHex2Deg(sbca_value=sbca_value,resolution=90.0,mode=2)
 
     def executeCommand(self,command,isMustCheckMessage,ignoreTimes,getdata):
         if self.__executeStop:
             return
         
-        
-        
-        self.__messageIgnoreTimes=ignoreTimes
-        self.__isMustCheckMessage=isMustCheckMessage
-        
-        if self.__ignoretime>=self.__messageIgnoreTimes or self.__isMessageReceived:
-            if self.__ignoretime>=self.__messageIgnoreTimes:
-                self.__StopbyError=True
-            self.setStopExecute()
+        if self.__serialclass is not None:
+            self.__messageIgnoreTimes=ignoreTimes
+            self.__isMustCheckMessage=isMustCheckMessage
             
-        if self.__ignoretime>0:
-            command=self.__mySendedMessage
-
-        if self.__isMessageSended:#PCから送信済み
-            if self.__isMustCheckMessage:
-                if self.isIgnorePattern(getdata):#データが不十分過ぎたら
-                    self.__ignoretime+=1
-                    self.__isMessageSended=False
-                    end = time.time()  # 現在時刻（処理完了後）を取得
-                    time_diff = end - self.start  # 処理完了後の時刻から処理開始前の時刻を減算する
-                    print("データが不十分です"+getdata,type(self)," 時間",time_diff)
-                    self.start=0
-                else:
-                    self.checkMessage(getdata)#応答メッセージをチェックし、異常が無ければ
-                pass
-            else:
-                self.__isMessageSended=False
+            if self.__ignoretime>=self.__messageIgnoreTimes or self.__isMessageReceived:
+                if self.__ignoretime>=self.__messageIgnoreTimes:
+                    self.__StopbyError=True
                 self.setStopExecute()
-        else:
-            print("WRITED",type(self),command)
-            self.start = time.time()  # 現在時刻（処理開始前）を取得
-            self.__serialWrite(command)
-            self.__isMessageSended=True
-            self.__mySendedMessage=command
+                
+            if self.__ignoretime>0:
+                command=self.__mySendedMessage
+
+            if self.__isMessageSended:#PCから送信済み
+                if self.__isMustCheckMessage:
+                    if self.isIgnorePattern(getdata):#データが不十分過ぎたら
+                        self.__ignoretime+=1
+                        self.__isMessageSended=False
+                        end = time.time()  # 現在時刻（処理完了後）を取得
+                        time_diff = end - self.start  # 処理完了後の時刻から処理開始前の時刻を減算する
+                        print("データが不十分です"+getdata,type(self)," 時間",time_diff)
+                        self.start=0
+                    else:
+                        self.checkMessage(getdata)#応答メッセージをチェックし、異常が無ければ
+                    pass
+                else:
+                    self.__isMessageSended=False
+                    self.setStopExecute()
+            else:
+                print("WRITED",type(self),command)
+                self.start = time.time()  # 現在時刻（処理開始前）を取得
+                self.__serialWrite(command)
+                self.__isMessageSended=True
+                self.__mySendedMessage=command
 
     def setIsMessageReceived(self):
         self.__isMessageReceived=True
@@ -1753,8 +1776,6 @@ class ComClassBase():
         self.__isMessageReceived=False
         print("[",type(self),"]:リセットします")
 
-
-        
     def __normalizeCode(self,code):
         return code
     
@@ -1772,6 +1793,9 @@ class ComClassBase():
         if  isinstance(self.__serialclass,Serialcommunicator4GeneralUse):
             code+=(self.__serialCodes['cr']+self.__serialCodes['lf'])
             self.__serialclass.SerialWrite(code)
+        elif isinstance(self.__serialclass,serial.Serial):
+            code+=(self.__serialCodes['cr']+self.__serialCodes['lf'])
+            self.__serialclass.write(code)
 
     def __init__(self,serialclass=None):
         self.__serialclass=serialclass
@@ -1903,6 +1927,50 @@ class AxisModeCom(ComClassBase):
         super(AxisModeCom,self).getReceivedMessageContents()
         return self.getContents()
 
+class AxisRateCom(ComClassBase):
+    def __init__(self,serialclass=None):
+        super().__init__(serialclass=serialclass)
+
+    def isIgnorePattern(self,message):#子クラスでオーバーライド
+        super(AxisRateCom,self).isIgnorePattern(message)
+        re=False
+        if isinstance(message,str):
+            ig=message.find(self.getnormSerialCode('ignoreM'))
+            ig=(ig>=0)
+            nothing=message is ""
+            re=(ig or nothing)
+        return re
+    
+    def checkMessage(self,message):#異常が無ければ、__isMessageReceivedと__recivedMessageContentsを変える
+        super(AxisRateCom,self).checkMessage(message)
+        if isinstance(message,str):
+            InRpos=self.getSendedMessage().find(" R")
+            isInR=InRpos is not -1
+            InWpos=self.getSendedMessage().find(" W")
+            isInW=InWpos is not -1
+
+            if isInR:
+                deleateInitial=self.getTextDeleateStr(text=message,delstr='@8')
+                print("self.getSendedMessage()=",self.getSendedMessage())
+                howmany=int(self.getSendedMessage()[InRpos+2])
+                if howmany==1:
+                    self.setMessageContents({"AzRate":self.convertHex2Rate(sbca_value=deleateInitial)})
+                elif howmany==2:
+                    AzEl=self.getSplitText(text=deleateInitial)
+                    self.setMessageContents({"AzRate":self.convertHex2Rate(sbca_value=AzEl[0]),"ElRate":self.convertHex2ElPos(sbca_value=AzEl[1])})
+            if isInW:
+                deleateInitial=self.getTextDeleateStr(text=self.getSendedMessage(),delstr='@8RTE W')
+                howmany=int(deleateInitial.count(",")+2)
+                if howmany==1:
+                    self.setMessageContents({"AzRate":self.convertHex2Rate(sbca_value=deleateInitial)})
+                elif howmany==2:
+                    AzEl=self.getSplitText(text=deleateInitial)
+                    self.setMessageContents({"AzRate":self.convertHex2Rate(sbca_value=AzEl[0]),"ElRate":self.convertHex2Rate(sbca_value=AzEl[1])})
+
+    def getReceivedMessageContents(self):
+        super(AxisRateCom,self).getReceivedMessageContents()
+        return self.getContents()
+
 class PositionCom(ComClassBase):
      
     def __init__(self,serialclass=None):
@@ -1950,7 +2018,6 @@ class PositionCom(ComClassBase):
         super(PositionCom,self).getReceivedMessageContents()
         return self.getContents()
         
-
 class ObserbDiffClass():
     
     __nowstats=None
@@ -2061,6 +2128,10 @@ class AxisStatsManager():
     __nowProgRot=None
     
     __nowRealRot=0
+
+    __nowProgRate=None
+    
+    __nowRealRate=0
     
     __axisStats=None
     

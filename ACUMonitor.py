@@ -26,7 +26,7 @@ class Start():
         AntenaAgent=ACUbackend.AnntenaMovement(acu=ACU,sleepT=0.1)
         ACU.setUpAsync2List(As=InputClass)
         ACU.setUpAsync2List(As=AntenaAgent)
-        ACU.setUpAsync2List(As=ACUbackend.AnntenaController(acu=ACU,sleepT=0.1,deviceName="USB Serial Port",deviceType="ACU",inputter=InputClass,movent=AntenaAgent,testMode=True))#InputRoopClass
+        ACU.setUpAsync2List(As=ACUbackend.AnntenaController(Type=1,acu=ACU,sleepT=0.1,deviceName="USB Serial Port",deviceType="ACU",inputter=InputClass,movent=AntenaAgent,testMode=True))#InputRoopClass
         
         #roop=ACUbackend.InputRoopClass(acu=ACU,sleepT=0.05)
         #ACU.setUpAsync2List(As=roop)
@@ -42,6 +42,7 @@ class ACU_Monitor():
     BackEnd=None
     FrontEnd=None
     execteAsyncClass=None
+    frontend_rooped=True
     def __init__(self):
         print("INIT!")
     def getBackEnd(self):
