@@ -41,6 +41,8 @@ class Coordinate(Enum):
 class CommandMode(Enum):
     UpdateAxis=1
     ReadAxis=2
+    UpdateAxisRate=2.1
+    ReadAxisRate=2.2
     ReadAxisMode=3
     UpdateAxisMode=4
     TurnOnOffPed=5

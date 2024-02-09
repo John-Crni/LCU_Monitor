@@ -130,7 +130,6 @@ class CustomBase(customtkinter.CTkFrame):
     def setCommondestinyObj(self,objs):
         self.CommondestinyObj=objs
     
-    
     def setDeath(self):
         if self.directBody is not None:
             self.directBody.destroy()
@@ -254,7 +253,6 @@ class CustomBase(customtkinter.CTkFrame):
                     if isinstance(obj,CustomBase):
                         obj.setStats(stats=False,mode=self.Stats_mode)
 
-
     def setnormalColor(self):
         self.directBody.configure(fg_color=self.fg_color)
         if self.bd_width>0:
@@ -264,7 +262,6 @@ class CustomBase(customtkinter.CTkFrame):
                 for obj in self.CommondestinyObj:
                     if isinstance(obj,CustomBase):
                         obj.setStats(stats=True,mode=self.Stats_mode)
-
 
     def setDisable(self):
         self.directBody.configure(state="disabled")

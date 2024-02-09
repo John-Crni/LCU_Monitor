@@ -244,6 +244,7 @@ class AsyncedClass():
     isACUenable=False
     sleepTime=0.1
     message="None"
+    notAsync=False
 
     
     def __init__(self,ACU=None):
@@ -265,7 +266,7 @@ class AsyncTest(AsyncedClass):
         print(self.__class__.__name__,"KILLED!")
     def Async(self):
         print(self.__class__.__name__,self.message,type(self.ACUmonitor))
-        self.sleep()
+       # self.sleep()
     def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
         self.sleepTime=sleepT
         self.message=message
@@ -451,7 +452,7 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
         pass
     
     def disConectFunc(self):#接続が着れた時に呼ばれる
-        pass
+        self.disconectSerial()
 
 
     def setSuccces2Conect(self):
@@ -488,7 +489,7 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
                 
                 self.setSuccces2Conect()
                 self.Succces2ConectFunc()
-                self.serialInputter.isSerialSet=True
+                self.conected2Realmachine()
                 self.funcok=True
             
             if self.funcok:
@@ -527,11 +528,9 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
                 else:
                     self.setSuccces2Conect()
                     self.Succces2ConectFunc()
-                    self.serialInputter.isSerialSet=True
-                    self.serialInputter.Myserial=self.Serial
+                    self.conected2Realmachine()
             if self.getConectStats() and self.mode:
                 try:
-                    
                     if self.Type==1:
                         self.SerialFunc()
                     elif self.Type==2:
@@ -539,6 +538,7 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
                 except (OSError, serial.SerialException):#切断されたときに呼ばれる
                     self.setDeviceDisconected()
                     self.disConectFunc()
+                    self.disconected2Realmachine()
                 except:
                     if isinstance(self.Serial,serial.Serial):
                         self.setText2CommandLine(text="SerialWorong!")
@@ -562,7 +562,17 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
         pass
 
     def conected2Realmachine(self):
-        self.serialInputter.setserial(self.Serial)
+        self.serialInputter.setserial(self)
+    
+    def disconected2Realmachine(self):
+        self.serialInputter.setserial(None)
+
+    def readline(self):
+        callclass=type(self)
+        if callclass!=AnntenaController:
+            if isinstance(self.Serial,serial.Serial):
+                re=self.Serial.readline()
+            return re
 
     
     def __init__(self,testMode=False,acu=None,sleepT=0.1,message="Serialcommunicator4GeneralUse",ma=None,deviceName="none",deviceType="none",inputter=None,Type=1):
@@ -573,7 +583,14 @@ class Serialcommunicator4GeneralUse(AsyncedClass):
         self.message=message
         self.master=ma
         self.serialInputter=inputter
-        #self.ControllMode=mode
+        if self.serialInputter is None:
+            if self.Type==2:
+                self.serialInputter=InputRoopClass()
+            elif self.Type==1:
+                raise ValueError("並列処理を指定していますが、受信クラスが設定されていません！")
+        if self.Type==2:
+            self.serialInputter.notAsync=True
+        self.disconected2Realmachine()
         self.mode=not testMode
         super().__init__(acu)
 
@@ -587,33 +604,31 @@ class InputRoopClass(AsyncedClass):
     
     Mode="REAL" #or TEST
     
-    Type=2
-    
+    Type=2#直列か並列か
+
     def setserial(self,ser):
-        if ser is not None:
+        if isinstance(ser,Serialcommunicator4GeneralUse):
             self.isSerialSet=True
+        else:
+            self.isSerialSet=False
         self.Myserial=ser
+
     
     def getdata(self):
         re=""
-        if self.Type==1 and self.isSerialSet and (isinstance(self.Myserial,AnntenaController) or isinstance(self.Myserial,serial.Serial)):
+        if self.Type==1 and self.isSerialSet and isinstance(self.Myserial,Serialcommunicator4GeneralUse):
             re=self.data
-            self.data=""
-        elif self.isSerialSet and (isinstance(self.Myserial,AnntenaController) or isinstance(self.Myserial,serial.Serial)):
+            #self.data=""
+        elif self.isSerialSet and (isinstance(self.Myserial,Serialcommunicator4GeneralUse)):
             self.data = self.Myserial.readline().decode('ascii')  
             re=self.data
-            self.data=""
+            #self.data=""
         return re
     
     def Async(self):
-        start = time.time()  # 現在時刻（処理開始前）を取得
-
-        if self.isSerialSet and isinstance(self.Myserial,serial.Serial)and self.Type==1:
-            self.data = self.Myserial.readline().decode('ascii')  
-            pass
-        elif self.isSerialSet and isinstance(self.Myserial,AnntenaController) and self.Type==1:
-            self.data = self.Myserial.readline().decode('ascii')  
-
+        if self.isSerialSet and isinstance(self.Myserial,Serialcommunicator4GeneralUse) and self.Type==1:
+            self.data = self.Myserial.readline().decode('ascii')
+        self.sleep()
 
     def __init__(self,acu=None,sleepT=0.1,message="Its'Me!",ma=None):
         self.sleepTime=sleepT
@@ -706,7 +721,12 @@ class AnntenaController(Serialcommunicator4GeneralUse):
         self.CheckOutPutCom.setStopExecute()
         self.AxisModeCom.setStopExecute()
         self.PositionCom.setStopExecute()
+        self.AxisRateCom.setStopExecute()
     
+        self.ACUmonitor.FrontEnd.setAnttenaMoving(flag=False)
+        self.ACUmonitor.FrontEnd.setAzMoving(flag=False)
+        self.ACUmonitor.FrontEnd.setElMoving(flag=False)
+
         self.IscheckPowerOn=None
         self.PowerOn=False
         self.IscheckManualMode=False
@@ -720,8 +740,10 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             self.ACUmonitor.FrontEnd.setAnttenaMoving(flag=False)
             self.ACUmonitor.FrontEnd.setAzMoving(flag=False)
             self.ACUmonitor.FrontEnd.setElMoving(flag=False)
-
         else:
+            self.setAzValues(progRot=None,realRot=None,rotdiff=None,rotSpeed=0)
+            self.setElValues(progRot=None,realRot=None,rotdiff=None,rotSpeed=0)
+
             self.ACUmonitor.FrontEnd.Setnotconect2Antenna()
             self.ACUmonitor.FrontEnd.setNotConect(flag=True)
             self.ACUmonitor.FrontEnd.setConect(flag=False)
@@ -1205,6 +1227,7 @@ class AnntenaController(Serialcommunicator4GeneralUse):
             self.ACUAgent.setMessage(text.encode('ascii'))
             
     def readline(self):
+        super(AnntenaController,self).readline()
         re=None
         if isinstance(self.Serial,serial.Serial):
             re=self.Serial.readline()
@@ -1218,7 +1241,6 @@ class AnntenaController(Serialcommunicator4GeneralUse):
         super().__init__(acu=acu,sleepT=sleepT,message=message,ma=ma,deviceName=deviceName,deviceType=deviceType,inputter=inputter,testMode=testMode,Type=Type)
         #self.serialInputter.Myserial=self
         if testMode:
-            self.serialInputter.setserial(self)
             self.ACUAgent=AnntenaAgent(movent)
         self.PowerOnOffCom=powerOnOffCom(serialclass=self)
         self.CheckOutPutCom=checkoutputCom(serialclass=self)
@@ -1757,7 +1779,7 @@ class ComClassBase():
 
         end = time.time()  # 現在時刻（処理完了後）を取得
         time_diff = end - self.start  # 処理完了後の時刻から処理開始前の時刻を減算する
-        print("[",type(self),"]:終了します","Error",self.__StopbyError,"開始時間:",self.start,"終了時間",end,"時間",time_diff)
+        print("[",type(self),"]:終了します","Error",self.__StopbyError,"時間",time_diff)
         self.start=0
    
     def setEnableExecute(self):
@@ -1793,9 +1815,6 @@ class ComClassBase():
         if  isinstance(self.__serialclass,Serialcommunicator4GeneralUse):
             code+=(self.__serialCodes['cr']+self.__serialCodes['lf'])
             self.__serialclass.SerialWrite(code)
-        elif isinstance(self.__serialclass,serial.Serial):
-            code+=(self.__serialCodes['cr']+self.__serialCodes['lf'])
-            self.__serialclass.write(code)
 
     def __init__(self,serialclass=None):
         self.__serialclass=serialclass
@@ -2679,9 +2698,10 @@ class Async(threading.Thread):
             self.FuncClass=funcClass
         if func is not None:
             self.Func=func
-        self.started = threading.Event()
-        self.alive = True
-        self.start()
+        if not self.FuncClass.notAsync:
+            self.started = threading.Event()
+            self.alive = True
+            self.start()
 
     def __del__(self):
         self.kill()
@@ -2695,11 +2715,12 @@ class Async(threading.Thread):
         print("\nend")
 
     def kill(self):
-        self.alive = False
-        print("ASYNC_KILLED")
-        self.FuncClass.killed_func()
-        self.started.set()
-        self.join()
+        if not self.FuncClass.notAsync:
+            self.alive = False
+            print("ASYNC_KILLED")
+            self.FuncClass.killed_func()
+            self.started.set()
+            self.join()
         
     def run(self):
         while self.alive:
